@@ -467,22 +467,38 @@
         ws.onmessage = function(event) {
           try {
             const data = JSON.parse(event.data);
-            console.log('Received from Streamerbot:', data);
+            console.log('Received from Streamerbot:', JSON.stringify(data, null, 2));
 
-            // Handle custom events from Streamerbot
-            if (data.event && data.event.type === 'Custom') {
-              const eventName = data.event.data.name;
+            // Streamerbot sends messages with different structures
+            // Try to find our custom event data
+            let eventData = null;
+            let eventName = null;
 
-              if (eventName === 'GT7Vote') {
-                const { username, position, avatar } = data.event.data;
-                processVote(username, position, avatar);
-              } else if (eventName === 'GT7StartPoll') {
-                startPoll();
-              } else if (eventName === 'GT7StopPoll') {
-                stopPoll();
-              } else if (eventName === 'GT7ResetPoll') {
-                resetPoll();
-              }
+            // Check various possible message structures
+            if (data.event && data.event.data) {
+              eventData = data.event.data;
+              eventName = eventData.name;
+            } else if (data.data && data.data.name) {
+              eventData = data.data;
+              eventName = eventData.name;
+            }
+
+            console.log('Event name:', eventName, 'Event data:', eventData);
+
+            // Process the event
+            if (eventName === 'GT7Vote' && eventData) {
+              const { username, position, avatar } = eventData;
+              console.log('Processing vote:', username, position, avatar);
+              processVote(username, position, avatar);
+            } else if (eventName === 'GT7StartPoll') {
+              console.log('Starting poll');
+              startPoll();
+            } else if (eventName === 'GT7StopPoll') {
+              console.log('Stopping poll');
+              stopPoll();
+            } else if (eventName === 'GT7ResetPoll') {
+              console.log('Resetting poll');
+              resetPoll();
             }
           } catch (error) {
             console.error('Error parsing message:', error);
