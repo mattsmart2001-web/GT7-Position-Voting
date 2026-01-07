@@ -259,7 +259,10 @@
 
   <script>
     // Configuration - Update this path if needed
-    const VOTE_FILE_PATH = 'C:/GT7-Position-Voting/votes.json';  // Change to your path
+    const VOTE_FILE_PATH = 'C:/GT7-Position-Voting/votes.js';  // Change to your path
+
+    // Global array for votes (will be populated by votes.js)
+    window.GT7VoteData = [];
 
     let voteData = {
       pollActive: false,
@@ -359,100 +362,86 @@
       }
     }
 
-    // Read vote file using XMLHttpRequest (works better with local files)
+    // Load votes by dynamically including the JavaScript file
+    let lastVoteCount = 0;
+    let scriptElement = null;
+
     function loadVotes() {
-      const xhr = new XMLHttpRequest();
-
-      xhr.onreadystatechange = function() {
-        if (xhr.readyState !== 4) return;
-
-        if (xhr.status === 0 || xhr.status === 200) {
-          try {
-            const text = xhr.responseText;
-
-            if (!text || text.trim() === '') {
-              console.log('Vote file is empty');
-              document.getElementById('status').textContent = '⚠️ Waiting for votes...';
-              return;
-            }
-
-        // Only update if file content changed
-        if (text === lastFileContent) {
-          return;
-        }
-
-        lastFileContent = text;
-
-        // Reset vote data
-        voteData.votes = {};
-        voteData.voterMap = {};
-        voteData.totalVotes = 0;
-        voteData.pollActive = true;
-
-        for (let i = 1; i <= 16; i++) {
-          voteData.votes[i] = { count: 0, voters: [] };
-        }
-
-        // Parse votes (one JSON object per line)
-        const lines = text.trim().split('\n');
-        lines.forEach(line => {
-          if (!line.trim()) return;
-
-          try {
-            const vote = JSON.parse(line);
-            const pos = vote.position;
-
-            // Check if user already voted
-            if (voteData.voterMap[vote.username]) {
-              const oldPos = voteData.voterMap[vote.username];
-              // Remove old vote
-              voteData.votes[oldPos].voters = voteData.votes[oldPos].voters.filter(
-                v => v.username !== vote.username
-              );
-              voteData.votes[oldPos].count--;
-              voteData.totalVotes--;
-            }
-
-            // Add new vote
-            voteData.votes[pos].voters.push({
-              username: vote.username,
-              avatar: vote.avatar,
-              timestamp: vote.timestamp
-            });
-            voteData.votes[pos].count++;
-            voteData.voterMap[vote.username] = pos;
-            voteData.totalVotes++;
-          } catch (e) {
-            console.error('Error parsing vote line:', e);
-          }
-        });
-
-        updateVotes();
-
-            console.log('Votes updated:', voteData);
-            document.getElementById('status').textContent = '✅ Connected';
-          } catch (error) {
-            console.error('Error parsing votes:', error);
-            document.getElementById('status').textContent = '⚠️ Parse error';
-          }
-        } else {
-          console.log('Error loading file, status:', xhr.status);
-          document.getElementById('status').textContent = '⚠️ Waiting for votes...';
-        }
-      };
-
-      xhr.onerror = function() {
-        console.log('XHR error loading votes');
-        document.getElementById('status').textContent = '⚠️ File error';
-      };
-
-      try {
-        xhr.open('GET', VOTE_FILE_PATH + '?t=' + Date.now(), true);
-        xhr.send();
-      } catch (error) {
-        console.error('Error initiating file read:', error);
-        document.getElementById('status').textContent = '⚠️ Cannot read file';
+      // Remove old script tag if it exists
+      if (scriptElement && scriptElement.parentNode) {
+        scriptElement.parentNode.removeChild(scriptElement);
       }
+
+      // Create new script tag with cache buster
+      scriptElement = document.createElement('script');
+      scriptElement.src = VOTE_FILE_PATH + '?t=' + Date.now();
+
+      scriptElement.onload = function() {
+        processVotes();
+      };
+
+      scriptElement.onerror = function() {
+        console.log('Vote file not found or error loading');
+        document.getElementById('status').textContent = '⚠️ Waiting for votes...';
+      };
+
+      document.head.appendChild(scriptElement);
+    }
+
+    function processVotes() {
+      if (!window.GT7VoteData || window.GT7VoteData.length === 0) {
+        console.log('No votes yet');
+        document.getElementById('status').textContent = '⚠️ Waiting for votes...';
+        return;
+      }
+
+      // Only process if we have new votes
+      if (window.GT7VoteData.length === lastVoteCount) {
+        return;
+      }
+
+      lastVoteCount = window.GT7VoteData.length;
+
+      // Reset vote data
+      voteData.votes = {};
+      voteData.voterMap = {};
+      voteData.totalVotes = 0;
+      voteData.pollActive = true;
+
+      for (let i = 1; i <= 16; i++) {
+        voteData.votes[i] = { count: 0, voters: [] };
+      }
+
+      // Process all votes from the array
+      window.GT7VoteData.forEach(vote => {
+        const pos = vote.position;
+
+        // Check if user already voted
+        if (voteData.voterMap[vote.username]) {
+          const oldPos = voteData.voterMap[vote.username];
+          // Remove old vote
+          voteData.votes[oldPos].voters = voteData.votes[oldPos].voters.filter(
+            v => v.username !== vote.username
+          );
+          voteData.votes[oldPos].count--;
+          voteData.totalVotes--;
+        }
+
+        // Add new vote
+        voteData.votes[pos].voters.push({
+          username: vote.username,
+          avatar: vote.avatar,
+          timestamp: vote.timestamp
+        });
+        voteData.votes[pos].count++;
+        voteData.voterMap[vote.username] = pos;
+        voteData.totalVotes++;
+      });
+
+      updateVotes();
+
+      console.log('Votes updated:', voteData);
+      document.getElementById('status').textContent = '✅ Connected';
     }
 
     // Initialize

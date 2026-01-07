@@ -34,7 +34,7 @@ using System.IO;
 
 public class CPHInline
 {
-    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.json";
+    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.js";
 
     public bool Execute()
     {
@@ -57,15 +57,16 @@ public class CPHInline
             avatarUrl = args["profileImageUrl"].ToString();
         }
 
-        // Build simple JSON manually (no library needed)
-        string voteJson = $@"{{
-  ""username"": ""{EscapeJson(username)}"",
-  ""position"": {position},
-  ""avatar"": ""{EscapeJson(avatarUrl)}"",
-  ""timestamp"": {DateTimeOffset.Now.ToUnixTimeMilliseconds()}
-}}";
+        // Build JavaScript content
+        string jsContent = $@"window.GT7VoteData = window.GT7VoteData || [];
+window.GT7VoteData.push({{
+  username: '{EscapeJs(username)}',
+  position: {position},
+  avatar: '{EscapeJs(avatarUrl)}',
+  timestamp: {DateTimeOffset.Now.ToUnixTimeMilliseconds()}
+}});";
 
-        // Append vote to file
+        // Write to JavaScript file
         try
         {
             // Create directory if it doesn't exist
@@ -75,8 +76,8 @@ public class CPHInline
                 Directory.CreateDirectory(dir);
             }
 
-            // Write vote (one per line for easy reading)
-            File.AppendAllText(VOTE_FILE, voteJson + Environment.NewLine);
+            // Append vote to JavaScript file
+            File.AppendAllText(VOTE_FILE, jsContent + Environment.NewLine);
 
             CPH.LogInfo($"Vote: {username} -> P{position}");
         }
@@ -88,10 +89,10 @@ public class CPHInline
         return true;
     }
 
-    private string EscapeJson(string text)
+    private string EscapeJs(string text)
     {
         if (text == null) return "";
-        return text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
+        return text.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
     }
 }
 ```
@@ -114,7 +115,7 @@ using System.IO;
 
 public class CPHInline
 {
-    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.json";
+    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.js";
 
     public bool Execute()
     {
@@ -148,16 +149,21 @@ public class CPHInline
 ## Test It!
 
 1. Make sure the folder `C:\GT7-Position-Voting\` exists
-2. In Streamerbot, manually run the "GT7 Start Poll" action (or type `!startpoll` in chat)
-3. Run the "GT7 Vote" action or type `!vote 5` in chat
-4. Check OBS - you should see the vote appear!
+2. In Streamerbot, right-click "GT7 Vote" → **Test Trigger**
+3. Add test data:
+   - `message`: `!vote 5`
+   - `userName`: `TestUser`
+4. Click **Test**
+5. Check `C:\GT7-Position-Voting\votes.js` - should see JavaScript code
+6. Check OBS - you should see the vote appear!
 
 ## Troubleshooting
 
 ### Overlay shows "Waiting for votes"
-- Make sure `C:\GT7-Position-Voting\votes.json` exists
+- Make sure `C:\GT7-Position-Voting\votes.js` exists
+- Check that votes are being written to the file (open it in Notepad)
 - Check the file path in both the overlay HTML and C# code match
-- Verify OBS browser source has "Allow access to local files" checked
+- Verify OBS browser source has "Local file" checked
 
 ### Votes not updating
 - Refresh the browser source in OBS
@@ -165,10 +171,15 @@ public class CPHInline
 - Make sure the vote action is enabled
 
 ### File path errors
-- The default path is `C:\GT7-Position-Voting\votes.json`
+- The default path is `C:\GT7-Position-Voting\votes.js`
 - If your folder is elsewhere, update BOTH:
   - The `VOTE_FILE` constant in the C# code
   - The `VOTE_FILE_PATH` constant in `overlay-file-based.html`
+
+### Why JavaScript instead of JSON?
+- Browsers block local file:// reading for security (CORS policy)
+- Script tags CAN load local JavaScript files
+- This works around the browser restriction without needing a server!
 
 ## Advantages
 
@@ -181,9 +192,9 @@ public class CPHInline
 
 ## File Location
 
-The votes are stored in: `C:\GT7-Position-Voting\votes.json`
+The votes are stored in: `C:\GT7-Position-Voting\votes.js`
 
-You can look at this file anytime to see the current vote status!
+This is a JavaScript file that contains all votes as an array. You can open it in Notepad to see the votes!
 
 ## Commands
 
