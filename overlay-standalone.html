@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>GT7 Position Voting Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      width: 1920px;
+      height: 1080px;
+    }
+
+    .container {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 1800px;
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 48px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow:
+        0 0 20px rgba(255, 50, 50, 0.8),
+        0 0 40px rgba(255, 50, 50, 0.6),
+        3px 3px 10px rgba(0, 0, 0, 0.9);
+      letter-spacing: 2px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+
+    .poll-inactive {
+      text-align: center;
+      font-size: 36px;
+      color: #888;
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      height: 600px;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
+      border-radius: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .position-bar {
+      flex: 1;
+      margin: 0 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .position-bar:hover {
+      transform: scale(1.05);
+      z-index: 10;
+    }
+
+    .bar {
+      width: 100%;
+      background: linear-gradient(180deg,
+        rgba(255, 50, 50, 0.9) 0%,
+        rgba(200, 0, 0, 0.9) 100%);
+      border-radius: 10px 10px 0 0;
+      position: relative;
+      transition: height 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      min-height: 5px;
+      box-shadow:
+        0 0 20px rgba(255, 50, 50, 0.5),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar.top-vote {
+      background: linear-gradient(180deg,
+        rgba(255, 215, 0, 0.9) 0%,
+        rgba(218, 165, 32, 0.9) 100%);
+      box-shadow:
+        0 0 30px rgba(255, 215, 0, 0.8),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .vote-count {
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 5px 12px;
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      white-space: nowrap;
+    }
+
+    .position-label {
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .position-label.top-position {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(218, 165, 32, 0.8));
+      color: #000;
+      border-color: rgba(255, 215, 0, 0.5);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+      50% { box-shadow: 0 0 40px rgba(255, 215, 0, 1); }
+    }
+
+    .avatars-container {
+      margin-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
+      max-height: 100px;
+      overflow: hidden;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      transition: transform 0.2s ease;
+      animation: avatarFadeIn 0.5s ease;
+    }
+
+    .avatar:hover {
+      transform: scale(1.3);
+      border-color: #fff;
+      z-index: 100;
+    }
+
+    @keyframes avatarFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .total-votes {
+      position: absolute;
+      top: 30px;
+      right: 50px;
+      font-size: 32px;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px 30px;
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .active-indicator {
+      position: absolute;
+      top: 30px;
+      left: 50px;
+      font-size: 28px;
+      color: #0f0;
+      text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px 30px;
+      border-radius: 15px;
+      border: 2px solid rgba(0, 255, 0, 0.3);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .connection-status {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid rgba(255, 100, 100, 0.5);
+      color: #ff6464;
+    }
+
+    .connection-status.connected {
+      border-color: rgba(0, 255, 100, 0.5);
+      color: #00ff64;
+    }
+  </style>
+</head>
+<body>
+  <div class="connection-status" id="connectionStatus">
+    Connecting to Streamerbot...
+  </div>
+
+  <div class="active-indicator hidden" id="activeIndicator">
+    🔴 LIVE VOTING
+  </div>
+
+  <div class="total-votes" id="totalVotes">
+    Total Votes: 0
+  </div>
+
+  <div class="container">
+    <div class="title">WHERE WILL I FINISH? 🏁</div>
+
+    <div class="poll-inactive hidden" id="pollInactive">
+      Voting will open soon...
+    </div>
+
+    <div class="chart-container" id="chartContainer">
+      <!-- Position bars will be generated here -->
+    </div>
+  </div>
+
+  <script>
+    // Configuration - CHANGE THESE TO MATCH YOUR STREAMERBOT SETTINGS
+    const STREAMERBOT_HOST = '127.0.0.1';  // Usually localhost/127.0.0.1
+    const STREAMERBOT_PORT = 8080;         // Default Streamerbot WebSocket port
+
+    // Vote data storage
+    let voteData = {
+      pollActive: false,
+      votes: {},
+      totalVotes: 0,
+      voterMap: {}
+    };
+
+    let ws = null;
+    let reconnectInterval = null;
+
+    // Initialize positions 1-16
+    for (let i = 1; i <= 16; i++) {
+      voteData.votes[i] = { count: 0, voters: [] };
+    }
+
+    // Initialize bars for positions 1-16
+    function initializeBars() {
+      const chartContainer = document.getElementById('chartContainer');
+      chartContainer.innerHTML = '';
+      for (let i = 1; i <= 16; i++) {
+        const positionBar = document.createElement('div');
+        positionBar.className = 'position-bar';
+        positionBar.id = `position-${i}`;
+
+        positionBar.innerHTML = `
+          <div class="bar" id="bar-${i}" style="height: 0%;">
+            <div class="vote-count hidden" id="count-${i}">0</div>
+          </div>
+          <div class="position-label" id="label-${i}">P${i}</div>
+          <div class="avatars-container" id="avatars-${i}"></div>
+        `;
+
+        chartContainer.appendChild(positionBar);
+      }
+    }
+
+    // Update visualization with vote data
+    function updateVotes() {
+      const totalVotesEl = document.getElementById('totalVotes');
+      totalVotesEl.textContent = `Total Votes: ${voteData.totalVotes}`;
+
+      // Find max votes for scaling
+      const maxVotes = Math.max(...Object.values(voteData.votes).map(v => v.count), 1);
+
+      // Find top voted position
+      let topPosition = null;
+      let topVotes = 0;
+      Object.keys(voteData.votes).forEach(pos => {
+        if (voteData.votes[pos].count > topVotes) {
+          topVotes = voteData.votes[pos].count;
+          topPosition = pos;
+        }
+      });
+
+      // Update each position
+      for (let i = 1; i <= 16; i++) {
+        const data = voteData.votes[i];
+        const bar = document.getElementById(`bar-${i}`);
+        const countEl = document.getElementById(`count-${i}`);
+        const labelEl = document.getElementById(`label-${i}`);
+        const avatarsContainer = document.getElementById(`avatars-${i}`);
+
+        // Calculate bar height (percentage of max)
+        const heightPercent = maxVotes > 0 ? (data.count / maxVotes) * 100 : 0;
+        bar.style.height = `${Math.max(heightPercent, 0)}%`;
+
+        // Update vote count
+        if (data.count > 0) {
+          countEl.textContent = data.count;
+          countEl.classList.remove('hidden');
+        } else {
+          countEl.classList.add('hidden');
+        }
+
+        // Highlight top position
+        if (i == topPosition && topVotes > 0) {
+          bar.classList.add('top-vote');
+          labelEl.classList.add('top-position');
+        } else {
+          bar.classList.remove('top-vote');
+          labelEl.classList.remove('top-position');
+        }
+
+        // Update avatars (show last 6 voters)
+        avatarsContainer.innerHTML = '';
+        const recentVoters = data.voters.slice(-6);
+        recentVoters.forEach(voter => {
+          const avatar = document.createElement('img');
+          avatar.src = voter.avatar;
+          avatar.className = 'avatar';
+          avatar.title = voter.username;
+          avatar.alt = voter.username;
+          avatarsContainer.appendChild(avatar);
+        });
+      }
+    }
+
+    // Handle incoming vote
+    function processVote(username, position, avatar) {
+      if (!voteData.pollActive) {
+        console.log('Poll is not active, vote ignored');
+        return;
+      }
+
+      const pos = parseInt(position);
+      if (isNaN(pos) || pos < 1 || pos > 16) {
+        console.error('Invalid position:', position);
+        return;
+      }
+
+      // Check if user already voted
+      if (voteData.voterMap[username]) {
+        const oldPosition = voteData.voterMap[username];
+        // Remove old vote
+        voteData.votes[oldPosition].voters = voteData.votes[oldPosition].voters.filter(
+          v => v.username !== username
+        );
+        voteData.votes[oldPosition].count--;
+        voteData.totalVotes--;
+      }
+
+      // Add new vote
+      const voter = {
+        username,
+        avatar: avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=random`,
+        timestamp: Date.now()
+      };
+
+      voteData.votes[pos].voters.push(voter);
+      voteData.votes[pos].count++;
+      voteData.voterMap[username] = pos;
+      voteData.totalVotes++;
+
+      updateVotes();
+      console.log(`Vote recorded: ${username} voted for P${pos}`);
+    }
+
+    // Start poll
+    function startPoll() {
+      voteData.pollActive = true;
+      document.getElementById('chartContainer').classList.remove('hidden');
+      document.getElementById('pollInactive').classList.add('hidden');
+      document.getElementById('activeIndicator').classList.remove('hidden');
+      console.log('Poll started');
+    }
+
+    // Stop poll
+    function stopPoll() {
+      voteData.pollActive = false;
+      document.getElementById('activeIndicator').classList.add('hidden');
+      console.log('Poll stopped');
+    }
+
+    // Reset poll
+    function resetPoll() {
+      for (let i = 1; i <= 16; i++) {
+        voteData.votes[i] = { count: 0, voters: [] };
+      }
+      voteData.totalVotes = 0;
+      voteData.voterMap = {};
+      voteData.pollActive = false;
+
+      updateVotes();
+      document.getElementById('activeIndicator').classList.add('hidden');
+      console.log('Poll reset');
+    }
+
+    // Connect to Streamerbot WebSocket
+    function connectToStreamerbot() {
+      const statusEl = document.getElementById('connectionStatus');
+      statusEl.textContent = 'Connecting to Streamerbot...';
+      statusEl.classList.remove('connected');
+
+      try {
+        ws = new WebSocket(`ws://${STREAMERBOT_HOST}:${STREAMERBOT_PORT}/`);
+
+        ws.onopen = function() {
+          console.log('Connected to Streamerbot');
+          statusEl.textContent = '✅ Connected';
+          statusEl.classList.add('connected');
+
+          // Hide status after 3 seconds
+          setTimeout(() => {
+            statusEl.classList.add('hidden');
+          }, 3000);
+
+          // Subscribe to events
+          ws.send(JSON.stringify({
+            request: 'Subscribe',
+            events: {
+              General: ['Custom']
+            },
+            id: 'gt7-voting-overlay'
+          }));
+        };
+
+        ws.onmessage = function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('Received from Streamerbot:', data);
+
+            // Handle custom events from Streamerbot
+            if (data.event && data.event.type === 'Custom') {
+              const eventName = data.data.name;
+
+              if (eventName === 'GT7Vote') {
+                const { username, position, avatar } = data.data;
+                processVote(username, position, avatar);
+              } else if (eventName === 'GT7StartPoll') {
+                startPoll();
+              } else if (eventName === 'GT7StopPoll') {
+                stopPoll();
+              } else if (eventName === 'GT7ResetPoll') {
+                resetPoll();
+              }
+            }
+          } catch (error) {
+            console.error('Error parsing message:', error);
+          }
+        };
+
+        ws.onerror = function(error) {
+          console.error('WebSocket error:', error);
+          statusEl.textContent = '❌ Connection Error';
+          statusEl.classList.remove('connected');
+          statusEl.classList.remove('hidden');
+        };
+
+        ws.onclose = function() {
+          console.log('Disconnected from Streamerbot');
+          statusEl.textContent = '❌ Disconnected - Reconnecting...';
+          statusEl.classList.remove('connected');
+          statusEl.classList.remove('hidden');
+
+          // Attempt to reconnect after 3 seconds
+          setTimeout(connectToStreamerbot, 3000);
+        };
+      } catch (error) {
+        console.error('Failed to connect:', error);
+        statusEl.textContent = '❌ Failed to Connect';
+        statusEl.classList.remove('connected');
+        setTimeout(connectToStreamerbot, 3000);
+      }
+    }
+
+    // Initialize on load
+    initializeBars();
+    connectToStreamerbot();
+
+    // Expose functions for testing in browser console
+    window.GT7Voting = {
+      processVote,
+      startPoll,
+      stopPoll,
+      resetPoll,
+      voteData
+    };
+
+    console.log('GT7 Position Voting Overlay loaded');
+    console.log('Test with: GT7Voting.startPoll() then GT7Voting.processVote("TestUser", 5, null)');
+  </script>
+</body>
+</html>

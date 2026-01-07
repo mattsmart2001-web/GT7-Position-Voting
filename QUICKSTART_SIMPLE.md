@@ -1,0 +1,114 @@
+# Quick Start (No Node.js!)
+
+Get GT7 Position Voting running in 3 minutes - no installation needed!
+
+## What You Need
+
+- ✅ Streamerbot (installed)
+- ✅ OBS Studio
+- ✅ The file: `overlay-standalone.html`
+
+That's it!
+
+## Setup Steps
+
+### 1. Enable Streamerbot WebSocket (30 seconds)
+
+1. Open **Streamerbot**
+2. Go to **Servers/Clients** tab
+3. Find **WebSocket Server**
+4. Make sure it's **enabled**
+5. Default port is `8080` - remember this!
+
+### 2. Add to OBS (1 minute)
+
+1. Open **OBS**
+2. Add **Browser Source** to your scene
+3. Click **"Browse"** and select `overlay-standalone.html`
+4. Check **"Local file"** box
+5. Set Width: `1920`
+6. Set Height: `1080`
+7. Click **OK**
+
+### 3. Create Streamerbot Actions (2 minutes)
+
+#### Vote Action
+
+1. In Streamerbot, create **Action**: "GT7 Vote"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!vote`
+3. Add **Sub-Action**: Core → Execute C# Code
+4. Paste this:
+
+```csharp
+using System;
+
+public class CPHInline
+{
+    public bool Execute()
+    {
+        string message = args["message"].ToString();
+        string username = args["userName"].ToString();
+        string[] parts = message.Split(' ');
+
+        if (parts.Length < 2) return false;
+
+        int position;
+        if (!int.TryParse(parts[1], out position) || position < 1 || position > 16)
+            return false;
+
+        string avatarUrl = $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(username)}&background=random";
+        if (args.ContainsKey("profileImageUrl"))
+            avatarUrl = args["profileImageUrl"].ToString();
+
+        CPH.BroadcastWs("GT7Vote", new {
+            name = "GT7Vote",
+            username = username,
+            position = position,
+            avatar = avatarUrl
+        });
+
+        return true;
+    }
+}
+```
+
+#### Control Actions (Optional but Recommended)
+
+Create 3 more actions with these commands:
+- `!startpoll` → `CPH.BroadcastWs("GT7StartPoll", new { name = "GT7StartPoll" });`
+- `!stoppoll` → `CPH.BroadcastWs("GT7StopPoll", new { name = "GT7StopPoll" });`
+- `!resetpoll` → `CPH.BroadcastWs("GT7ResetPoll", new { name = "GT7ResetPoll" });`
+
+(See STREAMERBOT_SIMPLE_SETUP.md for full code)
+
+## Test It!
+
+1. Make sure Streamerbot is running
+2. Check OBS - overlay should show "✅ Connected"
+3. In YouTube chat, type: `!startpoll`
+4. Type: `!vote 5`
+5. Watch it appear! 🎉
+
+## During a Race
+
+1. `!startpoll` - Start voting
+2. Viewers type `!vote [1-16]`
+3. `!stoppoll` - Close voting
+4. `!resetpoll` - Clear for next race
+
+## That's It!
+
+No npm, no Node.js, no server to run. Just one HTML file and Streamerbot! 🏁
+
+## Troubleshooting
+
+**"Disconnected" showing?**
+- Check Streamerbot WebSocket Server is enabled
+- Default port is 8080
+
+**Votes not showing?**
+- Type `!startpoll` first
+- Check Streamerbot actions are enabled
+
+**Need help?**
+- See: `STREAMERBOT_SIMPLE_SETUP.md` for detailed setup
