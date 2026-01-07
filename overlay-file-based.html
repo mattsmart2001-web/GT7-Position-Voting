@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <title>GT7 Position Voting Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      width: 1920px;
+      height: 1080px;
+    }
+
+    .container {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 1800px;
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 48px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow:
+        0 0 20px rgba(255, 50, 50, 0.8),
+        0 0 40px rgba(255, 50, 50, 0.6),
+        3px 3px 10px rgba(0, 0, 0, 0.9);
+      letter-spacing: 2px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+
+    .poll-inactive {
+      text-align: center;
+      font-size: 36px;
+      color: #888;
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.8);
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      height: 600px;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
+      border-radius: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .position-bar {
+      flex: 1;
+      margin: 0 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .position-bar:hover {
+      transform: scale(1.05);
+      z-index: 10;
+    }
+
+    .bar {
+      width: 100%;
+      background: linear-gradient(180deg,
+        rgba(255, 50, 50, 0.9) 0%,
+        rgba(200, 0, 0, 0.9) 100%);
+      border-radius: 10px 10px 0 0;
+      position: relative;
+      transition: height 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      min-height: 5px;
+      box-shadow:
+        0 0 20px rgba(255, 50, 50, 0.5),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar.top-vote {
+      background: linear-gradient(180deg,
+        rgba(255, 215, 0, 0.9) 0%,
+        rgba(218, 165, 32, 0.9) 100%);
+      box-shadow:
+        0 0 30px rgba(255, 215, 0, 0.8),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .vote-count {
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 5px 12px;
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      white-space: nowrap;
+    }
+
+    .position-label {
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .position-label.top-position {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(218, 165, 32, 0.8));
+      color: #000;
+      border-color: rgba(255, 215, 0, 0.5);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+      50% { box-shadow: 0 0 40px rgba(255, 215, 0, 1); }
+    }
+
+    .avatars-container {
+      margin-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
+      max-height: 100px;
+      overflow: hidden;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      transition: transform 0.2s ease;
+      animation: avatarFadeIn 0.5s ease;
+    }
+
+    .avatar:hover {
+      transform: scale(1.3);
+      border-color: #fff;
+      z-index: 100;
+    }
+
+    @keyframes avatarFadeIn {
+      from {
+        opacity: 0;
+        transform: scale(0);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .total-votes {
+      position: absolute;
+      top: 30px;
+      right: 50px;
+      font-size: 32px;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px 30px;
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .active-indicator {
+      position: absolute;
+      top: 30px;
+      left: 50px;
+      font-size: 28px;
+      color: #0f0;
+      text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px 30px;
+      border-radius: 15px;
+      border: 2px solid rgba(0, 255, 0, 0.3);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .status {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 18px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      border: 2px solid rgba(0, 255, 100, 0.5);
+      color: #00ff64;
+    }
+  </style>
+</head>
+<body>
+  <div class="status" id="status">
+    ✅ Ready
+  </div>
+
+  <div class="active-indicator hidden" id="activeIndicator">
+    🔴 LIVE VOTING
+  </div>
+
+  <div class="total-votes" id="totalVotes">
+    Total Votes: 0
+  </div>
+
+  <div class="container">
+    <div class="title">WHERE WILL I FINISH? 🏁</div>
+
+    <div class="poll-inactive hidden" id="pollInactive">
+      Voting will open soon...
+    </div>
+
+    <div class="chart-container" id="chartContainer">
+      <!-- Position bars will be generated here -->
+    </div>
+  </div>
+
+  <script>
+    // Configuration - Update this path if needed
+    const VOTE_FILE_PATH = 'C:/GT7-Position-Voting/votes.json';  // Change to your path
+
+    let voteData = {
+      pollActive: false,
+      votes: {},
+      totalVotes: 0,
+      voterMap: {}
+    };
+
+    let lastFileContent = '';
+
+    // Initialize positions 1-16
+    for (let i = 1; i <= 16; i++) {
+      voteData.votes[i] = { count: 0, voters: [] };
+    }
+
+    // Initialize bars
+    function initializeBars() {
+      const chartContainer = document.getElementById('chartContainer');
+      chartContainer.innerHTML = '';
+      for (let i = 1; i <= 16; i++) {
+        const positionBar = document.createElement('div');
+        positionBar.className = 'position-bar';
+        positionBar.id = `position-${i}`;
+
+        positionBar.innerHTML = `
+          <div class="bar" id="bar-${i}" style="height: 0%;">
+            <div class="vote-count hidden" id="count-${i}">0</div>
+          </div>
+          <div class="position-label" id="label-${i}">P${i}</div>
+          <div class="avatars-container" id="avatars-${i}"></div>
+        `;
+
+        chartContainer.appendChild(positionBar);
+      }
+    }
+
+    // Update visualization
+    function updateVotes() {
+      const totalVotesEl = document.getElementById('totalVotes');
+      totalVotesEl.textContent = `Total Votes: ${voteData.totalVotes}`;
+
+      const maxVotes = Math.max(...Object.values(voteData.votes).map(v => v.count), 1);
+
+      let topPosition = null;
+      let topVotes = 0;
+      Object.keys(voteData.votes).forEach(pos => {
+        if (voteData.votes[pos].count > topVotes) {
+          topVotes = voteData.votes[pos].count;
+          topPosition = pos;
+        }
+      });
+
+      for (let i = 1; i <= 16; i++) {
+        const data = voteData.votes[i];
+        const bar = document.getElementById(`bar-${i}`);
+        const countEl = document.getElementById(`count-${i}`);
+        const labelEl = document.getElementById(`label-${i}`);
+        const avatarsContainer = document.getElementById(`avatars-${i}`);
+
+        const heightPercent = maxVotes > 0 ? (data.count / maxVotes) * 100 : 0;
+        bar.style.height = `${Math.max(heightPercent, 0)}%`;
+
+        if (data.count > 0) {
+          countEl.textContent = data.count;
+          countEl.classList.remove('hidden');
+        } else {
+          countEl.classList.add('hidden');
+        }
+
+        if (i == topPosition && topVotes > 0) {
+          bar.classList.add('top-vote');
+          labelEl.classList.add('top-position');
+        } else {
+          bar.classList.remove('top-vote');
+          labelEl.classList.remove('top-position');
+        }
+
+        avatarsContainer.innerHTML = '';
+        const recentVoters = data.voters.slice(-6);
+        recentVoters.forEach(voter => {
+          const avatar = document.createElement('img');
+          avatar.src = voter.avatar;
+          avatar.className = 'avatar';
+          avatar.title = voter.username;
+          avatar.alt = voter.username;
+          avatarsContainer.appendChild(avatar);
+        });
+      }
+
+      // Update poll status
+      if (voteData.pollActive) {
+        document.getElementById('chartContainer').classList.remove('hidden');
+        document.getElementById('pollInactive').classList.add('hidden');
+        document.getElementById('activeIndicator').classList.remove('hidden');
+      } else {
+        document.getElementById('activeIndicator').classList.add('hidden');
+      }
+    }
+
+    // Read vote file
+    async function loadVotes() {
+      try {
+        // Add cache buster to avoid browser caching
+        const response = await fetch(VOTE_FILE_PATH + '?t=' + Date.now());
+
+        if (!response.ok) {
+          console.log('Vote file not found or not readable');
+          return;
+        }
+
+        const text = await response.text();
+
+        // Only update if file content changed
+        if (text === lastFileContent) {
+          return;
+        }
+
+        lastFileContent = text;
+        const data = JSON.parse(text);
+
+        // Update vote data
+        voteData = data;
+        updateVotes();
+
+        console.log('Votes updated:', voteData);
+        document.getElementById('status').textContent = '✅ Connected';
+      } catch (error) {
+        console.log('Error loading votes:', error.message);
+        document.getElementById('status').textContent = '⚠️ Waiting for votes...';
+      }
+    }
+
+    // Initialize
+    initializeBars();
+    updateVotes();
+
+    // Poll for changes every 500ms
+    setInterval(loadVotes, 500);
+
+    // Initial load
+    loadVotes();
+
+    console.log('GT7 Position Voting Overlay loaded (File-based)');
+    console.log('Reading from:', VOTE_FILE_PATH);
+  </script>
+</body>
+</html>
