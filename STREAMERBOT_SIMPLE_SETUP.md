@@ -47,6 +47,7 @@ Paste this code:
 
 ```csharp
 using System;
+using System.Web;
 
 public class CPHInline
 {
@@ -70,7 +71,7 @@ public class CPHInline
         }
 
         // Get avatar URL
-        string avatarUrl = $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(username)}&background=random";
+        string avatarUrl = $"https://ui-avatars.com/api/?name={HttpUtility.UrlEncode(username)}&background=random";
 
         // Try to get YouTube profile picture
         if (args.ContainsKey("profileImageUrl"))
@@ -79,13 +80,19 @@ public class CPHInline
         }
 
         // Broadcast vote to overlay via WebSocket
-        CPH.BroadcastWs("GT7Vote", new {
-            name = "GT7Vote",
-            username = username,
-            position = position,
-            avatar = avatarUrl
-        });
+        string json = $@"{{
+            ""event"": {{
+                ""type"": ""Custom"",
+                ""data"": {{
+                    ""name"": ""GT7Vote"",
+                    ""username"": ""{username.Replace("\"", "\\\"")}"",
+                    ""position"": {position},
+                    ""avatar"": ""{avatarUrl.Replace("\"", "\\\"")}""
+                }}
+            }}
+        }}";
 
+        CPH.WebsocketBroadcastJson(json);
         CPH.LogInfo($"Vote: {username} -> P{position}");
 
         return true;
@@ -114,10 +121,16 @@ public class CPHInline
 {
     public bool Execute()
     {
-        CPH.BroadcastWs("GT7StartPoll", new {
-            name = "GT7StartPoll"
-        });
+        string json = @"{
+            ""event"": {
+                ""type"": ""Custom"",
+                ""data"": {
+                    ""name"": ""GT7StartPoll""
+                }
+            }
+        }";
 
+        CPH.WebsocketBroadcastJson(json);
         CPH.LogInfo("Poll started");
         CPH.SendYouTubeMessage("🏁 Voting is now OPEN! Type !vote [1-16] to predict the finish position!");
 
@@ -145,10 +158,16 @@ public class CPHInline
 {
     public bool Execute()
     {
-        CPH.BroadcastWs("GT7StopPoll", new {
-            name = "GT7StopPoll"
-        });
+        string json = @"{
+            ""event"": {
+                ""type"": ""Custom"",
+                ""data"": {
+                    ""name"": ""GT7StopPoll""
+                }
+            }
+        }";
 
+        CPH.WebsocketBroadcastJson(json);
         CPH.LogInfo("Poll stopped");
         CPH.SendYouTubeMessage("🏁 Voting is now CLOSED! Let's see the results!");
 
@@ -176,10 +195,16 @@ public class CPHInline
 {
     public bool Execute()
     {
-        CPH.BroadcastWs("GT7ResetPoll", new {
-            name = "GT7ResetPoll"
-        });
+        string json = @"{
+            ""event"": {
+                ""type"": ""Custom"",
+                ""data"": {
+                    ""name"": ""GT7ResetPoll""
+                }
+            }
+        }";
 
+        CPH.WebsocketBroadcastJson(json);
         CPH.LogInfo("Poll reset");
         CPH.SendYouTubeMessage("🔄 Poll has been reset!");
 

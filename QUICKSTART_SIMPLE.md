@@ -41,6 +41,7 @@ That's it!
 
 ```csharp
 using System;
+using System.Web;
 
 public class CPHInline
 {
@@ -56,17 +57,23 @@ public class CPHInline
         if (!int.TryParse(parts[1], out position) || position < 1 || position > 16)
             return false;
 
-        string avatarUrl = $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(username)}&background=random";
+        string avatarUrl = $"https://ui-avatars.com/api/?name={HttpUtility.UrlEncode(username)}&background=random";
         if (args.ContainsKey("profileImageUrl"))
             avatarUrl = args["profileImageUrl"].ToString();
 
-        CPH.BroadcastWs("GT7Vote", new {
-            name = "GT7Vote",
-            username = username,
-            position = position,
-            avatar = avatarUrl
-        });
+        string json = $@"{{
+            ""event"": {{
+                ""type"": ""Custom"",
+                ""data"": {{
+                    ""name"": ""GT7Vote"",
+                    ""username"": ""{username.Replace("\"", "\\\"")}"",
+                    ""position"": {position},
+                    ""avatar"": ""{avatarUrl.Replace("\"", "\\\"")}""
+                }}
+            }}
+        }}";
 
+        CPH.WebsocketBroadcastJson(json);
         return true;
     }
 }
@@ -74,12 +81,24 @@ public class CPHInline
 
 #### Control Actions (Optional but Recommended)
 
-Create 3 more actions with these commands:
-- `!startpoll` → `CPH.BroadcastWs("GT7StartPoll", new { name = "GT7StartPoll" });`
-- `!stoppoll` → `CPH.BroadcastWs("GT7StopPoll", new { name = "GT7StopPoll" });`
-- `!resetpoll` → `CPH.BroadcastWs("GT7ResetPoll", new { name = "GT7ResetPoll" });`
+Create 3 more actions for poll control:
+- **!startpoll** - Starts the voting
+- **!stoppoll** - Stops the voting
+- **!resetpoll** - Clears all votes
 
-(See STREAMERBOT_SIMPLE_SETUP.md for full code)
+For the complete C# code for these actions, see **STREAMERBOT_SIMPLE_SETUP.md**
+
+Quick version - use this C# code for each:
+```csharp
+// For !startpoll
+CPH.WebsocketBroadcastJson(@"{""event"":{""type"":""Custom"",""data"":{""name"":""GT7StartPoll""}}}");
+
+// For !stoppoll
+CPH.WebsocketBroadcastJson(@"{""event"":{""type"":""Custom"",""data"":{""name"":""GT7StopPoll""}}}");
+
+// For !resetpoll
+CPH.WebsocketBroadcastJson(@"{""event"":{""type"":""Custom"",""data"":{""name"":""GT7ResetPoll""}}}");
+```
 
 ## Test It!
 
