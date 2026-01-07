@@ -471,10 +471,10 @@
 
             // Handle custom events from Streamerbot
             if (data.event && data.event.type === 'Custom') {
-              const eventName = data.data.name;
+              const eventName = data.event.data.name;
 
               if (eventName === 'GT7Vote') {
-                const { username, position, avatar } = data.data;
+                const { username, position, avatar } = data.event.data;
                 processVote(username, position, avatar);
               } else if (eventName === 'GT7StartPoll') {
                 startPoll();
