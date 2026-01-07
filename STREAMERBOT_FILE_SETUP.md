@@ -31,8 +31,6 @@ No WebSocket, no ports, no configuration headaches! This version uses a simple J
 ```csharp
 using System;
 using System.IO;
-using Newtonsoft.Json;
-using System.Collections.Generic;
 
 public class CPHInline
 {
@@ -59,81 +57,41 @@ public class CPHInline
             avatarUrl = args["profileImageUrl"].ToString();
         }
 
-        // Load existing votes
-        var voteData = LoadVotes();
+        // Build simple JSON manually (no library needed)
+        string voteJson = $@"{{
+  ""username"": ""{EscapeJson(username)}"",
+  ""position"": {position},
+  ""avatar"": ""{EscapeJson(avatarUrl)}"",
+  ""timestamp"": {DateTimeOffset.Now.ToUnixTimeMilliseconds()}
+}}";
 
-        // Check if user already voted
-        if (voteData.voterMap.ContainsKey(username))
+        // Append vote to file
+        try
         {
-            int oldPosition = voteData.voterMap[username];
-            // Remove old vote
-            voteData.votes[oldPosition].voters.RemoveAll(v => v.username == username);
-            voteData.votes[oldPosition].count--;
-            voteData.totalVotes--;
+            // Create directory if it doesn't exist
+            string dir = Path.GetDirectoryName(VOTE_FILE);
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            // Write vote (one per line for easy reading)
+            File.AppendAllText(VOTE_FILE, voteJson + Environment.NewLine);
+
+            CPH.LogInfo($"Vote: {username} -> P{position}");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error saving vote: {ex.Message}");
         }
 
-        // Add new vote
-        var voter = new
-        {
-            username = username,
-            avatar = avatarUrl,
-            timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds()
-        };
-
-        voteData.votes[position].voters.Add(voter);
-        voteData.votes[position].count++;
-        voteData.voterMap[username] = position;
-        voteData.totalVotes++;
-
-        // Save votes
-        SaveVotes(voteData);
-
-        CPH.LogInfo($"Vote: {username} -> P{position}");
         return true;
     }
 
-    private dynamic LoadVotes()
+    private string EscapeJson(string text)
     {
-        try
-        {
-            if (File.Exists(VOTE_FILE))
-            {
-                string json = File.ReadAllText(VOTE_FILE);
-                return JsonConvert.DeserializeObject<dynamic>(json);
-            }
-        }
-        catch (Exception ex)
-        {
-            CPH.LogError($"Error loading votes: {ex.Message}");
-        }
-
-        // Return new vote data
-        var votes = new Dictionary<int, dynamic>();
-        for (int i = 1; i <= 16; i++)
-        {
-            votes[i] = new { count = 0, voters = new List<dynamic>() };
-        }
-
-        return new
-        {
-            pollActive = true,
-            votes = votes,
-            totalVotes = 0,
-            voterMap = new Dictionary<string, int>()
-        };
-    }
-
-    private void SaveVotes(dynamic voteData)
-    {
-        try
-        {
-            string json = JsonConvert.SerializeObject(voteData, Formatting.Indented);
-            File.WriteAllText(VOTE_FILE, json);
-        }
-        catch (Exception ex)
-        {
-            CPH.LogError($"Error saving votes: {ex.Message}");
-        }
+        if (text == null) return "";
+        return text.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
     }
 }
 ```
@@ -142,99 +100,9 @@ public class CPHInline
 
 ### Step 3: Create Poll Control Actions (Optional)
 
-#### Start Poll Action
+#### Reset Poll Action (Recommended)
 
-1. Create **Action**: "GT7 Start Poll"
-2. Add **Trigger**: YouTube → Chat Message → Command: `!startpoll` (Moderators only)
-3. Add **Sub-Action**: Core → Execute C# Code
-
-```csharp
-using System;
-using System.IO;
-using Newtonsoft.Json;
-
-public class CPHInline
-{
-    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.json";
-
-    public bool Execute()
-    {
-        try
-        {
-            // Create new vote file with poll active
-            var votes = new Dictionary<int, object>();
-            for (int i = 1; i <= 16; i++)
-            {
-                votes[i] = new { count = 0, voters = new List<object>() };
-            }
-
-            var voteData = new
-            {
-                pollActive = true,
-                votes = votes,
-                totalVotes = 0,
-                voterMap = new Dictionary<string, int>()
-            };
-
-            string json = JsonConvert.SerializeObject(voteData, Formatting.Indented);
-            File.WriteAllText(VOTE_FILE, json);
-
-            CPH.LogInfo("Poll started");
-            CPH.SendYouTubeMessage("🏁 Voting is now OPEN! Type !vote [1-16] to predict my finish position!");
-        }
-        catch (Exception ex)
-        {
-            CPH.LogError($"Error starting poll: {ex.Message}");
-        }
-
-        return true;
-    }
-}
-```
-
-#### Stop Poll Action
-
-1. Create **Action**: "GT7 Stop Poll"
-2. Add **Trigger**: YouTube → Chat Message → Command: `!stoppoll` (Moderators only)
-3. Add **Sub-Action**: Core → Execute C# Code
-
-```csharp
-using System;
-using System.IO;
-using Newtonsoft.Json;
-
-public class CPHInline
-{
-    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.json";
-
-    public bool Execute()
-    {
-        try
-        {
-            if (File.Exists(VOTE_FILE))
-            {
-                string json = File.ReadAllText(VOTE_FILE);
-                dynamic voteData = JsonConvert.DeserializeObject<dynamic>(json);
-                voteData.pollActive = false;
-
-                json = JsonConvert.SerializeObject(voteData, Formatting.Indented);
-                File.WriteAllText(VOTE_FILE, json);
-
-                CPH.LogInfo("Poll stopped");
-                CPH.SendYouTubeMessage("🏁 Voting is now CLOSED! Let's see the results!");
-            }
-        }
-        catch (Exception ex)
-        {
-            CPH.LogError($"Error stopping poll: {ex.Message}");
-        }
-
-        return true;
-    }
-}
-```
-
-#### Reset Poll Action
+The easiest way to reset is just to delete the vote file:
 
 1. Create **Action**: "GT7 Reset Poll"
 2. Add **Trigger**: YouTube → Chat Message → Command: `!resetpoll` (Moderators only)
@@ -243,7 +111,6 @@ public class CPHInline
 ```csharp
 using System;
 using System.IO;
-using Newtonsoft.Json;
 
 public class CPHInline
 {
@@ -257,10 +124,14 @@ public class CPHInline
             if (File.Exists(VOTE_FILE))
             {
                 File.Delete(VOTE_FILE);
+                CPH.LogInfo("Poll reset - file deleted");
+            }
+            else
+            {
+                CPH.LogInfo("Poll already empty");
             }
 
-            CPH.LogInfo("Poll reset");
-            CPH.SendYouTubeMessage("🔄 Poll has been reset!");
+            CPH.SendYouTubeMessage("🔄 Poll has been reset! Type !vote [1-16] to predict my finish position!");
         }
         catch (Exception ex)
         {
@@ -271,6 +142,8 @@ public class CPHInline
     }
 }
 ```
+
+**Note:** The poll is always "active" with this simple version. Votes start as soon as someone types `!vote`. To reset for a new race, just use `!resetpoll`.
 
 ## Test It!
 

@@ -378,10 +378,51 @@
         }
 
         lastFileContent = text;
-        const data = JSON.parse(text);
 
-        // Update vote data
-        voteData = data;
+        // Reset vote data
+        voteData.votes = {};
+        voteData.voterMap = {};
+        voteData.totalVotes = 0;
+        voteData.pollActive = true;
+
+        for (let i = 1; i <= 16; i++) {
+          voteData.votes[i] = { count: 0, voters: [] };
+        }
+
+        // Parse votes (one JSON object per line)
+        const lines = text.trim().split('\n');
+        lines.forEach(line => {
+          if (!line.trim()) return;
+
+          try {
+            const vote = JSON.parse(line);
+            const pos = vote.position;
+
+            // Check if user already voted
+            if (voteData.voterMap[vote.username]) {
+              const oldPos = voteData.voterMap[vote.username];
+              // Remove old vote
+              voteData.votes[oldPos].voters = voteData.votes[oldPos].voters.filter(
+                v => v.username !== vote.username
+              );
+              voteData.votes[oldPos].count--;
+              voteData.totalVotes--;
+            }
+
+            // Add new vote
+            voteData.votes[pos].voters.push({
+              username: vote.username,
+              avatar: vote.avatar,
+              timestamp: vote.timestamp
+            });
+            voteData.votes[pos].count++;
+            voteData.voterMap[vote.username] = pos;
+            voteData.totalVotes++;
+          } catch (e) {
+            console.error('Error parsing vote line:', e);
+          }
+        });
+
         updateVotes();
 
         console.log('Votes updated:', voteData);
