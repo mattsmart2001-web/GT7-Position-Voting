@@ -41,7 +41,6 @@ That's it!
 
 ```csharp
 using System;
-using System.Web;
 
 public class CPHInline
 {
@@ -57,18 +56,23 @@ public class CPHInline
         if (!int.TryParse(parts[1], out position) || position < 1 || position > 16)
             return false;
 
-        string avatarUrl = $"https://ui-avatars.com/api/?name={HttpUtility.UrlEncode(username)}&background=random";
+        string encodedName = username.Replace(" ", "+").Replace("\"", "");
+        string avatarUrl = $"https://ui-avatars.com/api/?name={encodedName}&background=random";
+
         if (args.ContainsKey("profileImageUrl"))
             avatarUrl = args["profileImageUrl"].ToString();
+
+        string safeUsername = username.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        string safeAvatar = avatarUrl.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
         string json = $@"{{
             ""event"": {{
                 ""type"": ""Custom"",
                 ""data"": {{
                     ""name"": ""GT7Vote"",
-                    ""username"": ""{username.Replace("\"", "\\\"")}"",
+                    ""username"": ""{safeUsername}"",
                     ""position"": {position},
-                    ""avatar"": ""{avatarUrl.Replace("\"", "\\\"")}""
+                    ""avatar"": ""{safeAvatar}""
                 }}
             }}
         }}";

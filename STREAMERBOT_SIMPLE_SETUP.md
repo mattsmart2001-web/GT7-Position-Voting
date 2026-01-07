@@ -47,7 +47,6 @@ Paste this code:
 
 ```csharp
 using System;
-using System.Web;
 
 public class CPHInline
 {
@@ -70,8 +69,9 @@ public class CPHInline
             return false;
         }
 
-        // Get avatar URL
-        string avatarUrl = $"https://ui-avatars.com/api/?name={HttpUtility.UrlEncode(username)}&background=random";
+        // Get avatar URL - simple URL encoding for username
+        string encodedName = username.Replace(" ", "+").Replace("\"", "");
+        string avatarUrl = $"https://ui-avatars.com/api/?name={encodedName}&background=random";
 
         // Try to get YouTube profile picture
         if (args.ContainsKey("profileImageUrl"))
@@ -79,15 +79,19 @@ public class CPHInline
             avatarUrl = args["profileImageUrl"].ToString();
         }
 
+        // Escape special characters for JSON
+        string safeUsername = username.Replace("\\", "\\\\").Replace("\"", "\\\"");
+        string safeAvatar = avatarUrl.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
         // Broadcast vote to overlay via WebSocket
         string json = $@"{{
             ""event"": {{
                 ""type"": ""Custom"",
                 ""data"": {{
                     ""name"": ""GT7Vote"",
-                    ""username"": ""{username.Replace("\"", "\\\"")}"",
+                    ""username"": ""{safeUsername}"",
                     ""position"": {position},
-                    ""avatar"": ""{avatarUrl.Replace("\"", "\\\"")}""
+                    ""avatar"": ""{safeAvatar}""
                 }}
             }}
         }}";
