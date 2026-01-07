@@ -359,18 +359,22 @@
       }
     }
 
-    // Read vote file
-    async function loadVotes() {
-      try {
-        // Add cache buster to avoid browser caching
-        const response = await fetch(VOTE_FILE_PATH + '?t=' + Date.now());
+    // Read vote file using XMLHttpRequest (works better with local files)
+    function loadVotes() {
+      const xhr = new XMLHttpRequest();
 
-        if (!response.ok) {
-          console.log('Vote file not found or not readable');
-          return;
-        }
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState !== 4) return;
 
-        const text = await response.text();
+        if (xhr.status === 0 || xhr.status === 200) {
+          try {
+            const text = xhr.responseText;
+
+            if (!text || text.trim() === '') {
+              console.log('Vote file is empty');
+              document.getElementById('status').textContent = '⚠️ Waiting for votes...';
+              return;
+            }
 
         // Only update if file content changed
         if (text === lastFileContent) {
@@ -425,11 +429,29 @@
 
         updateVotes();
 
-        console.log('Votes updated:', voteData);
-        document.getElementById('status').textContent = '✅ Connected';
+            console.log('Votes updated:', voteData);
+            document.getElementById('status').textContent = '✅ Connected';
+          } catch (error) {
+            console.error('Error parsing votes:', error);
+            document.getElementById('status').textContent = '⚠️ Parse error';
+          }
+        } else {
+          console.log('Error loading file, status:', xhr.status);
+          document.getElementById('status').textContent = '⚠️ Waiting for votes...';
+        }
+      };
+
+      xhr.onerror = function() {
+        console.log('XHR error loading votes');
+        document.getElementById('status').textContent = '⚠️ File error';
+      };
+
+      try {
+        xhr.open('GET', VOTE_FILE_PATH + '?t=' + Date.now(), true);
+        xhr.send();
       } catch (error) {
-        console.log('Error loading votes:', error.message);
-        document.getElementById('status').textContent = '⚠️ Waiting for votes...';
+        console.error('Error initiating file read:', error);
+        document.getElementById('status').textContent = '⚠️ Cannot read file';
       }
     }
 
