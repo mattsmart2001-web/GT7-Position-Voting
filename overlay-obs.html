@@ -250,39 +250,40 @@
     let scriptElement = null;
 
     function loadVotes() {
-      // Remove old script tag if it exists
-      if (scriptElement && scriptElement.parentNode) {
-        scriptElement.parentNode.removeChild(scriptElement);
-        scriptElement = null;
-      }
+      // Use XMLHttpRequest to read file directly (works better in OBS)
+      const xhr = new XMLHttpRequest();
 
-      // Reset the vote data array for fresh load
-      window.GT7VoteData = [];
+      // Add cache buster to URL
+      const cacheBuster = '?t=' + Date.now() + '&r=' + Math.random();
+      xhr.open('GET', VOTE_FILE_PATH + cacheBuster, true);
 
-      // Small delay to ensure cleanup
-      setTimeout(function() {
-        // Create new script tag with aggressive cache buster
-        scriptElement = document.createElement('script');
-        scriptElement.type = 'text/javascript';
-        scriptElement.id = 'vote-script-' + Date.now();
-        scriptElement.src = VOTE_FILE_PATH + '?v=' + Date.now() + '&r=' + Math.random();
+      xhr.onload = function() {
+        if (xhr.status === 200 || xhr.status === 0) {
+          try {
+            // Reset the vote data array
+            window.GT7VoteData = [];
 
-        scriptElement.onload = function() {
-          // Check if we have new votes
-          if (window.GT7VoteData && window.GT7VoteData.length > 0) {
-            if (window.GT7VoteData.length !== lastVoteCount) {
-              lastVoteCount = window.GT7VoteData.length;
-              processVotes();
+            // Execute the JavaScript content
+            eval(xhr.responseText);
+
+            // Check if we have new votes
+            if (window.GT7VoteData && window.GT7VoteData.length > 0) {
+              if (window.GT7VoteData.length !== lastVoteCount) {
+                lastVoteCount = window.GT7VoteData.length;
+                processVotes();
+              }
             }
+          } catch (e) {
+            console.error('Error processing votes:', e);
           }
-        };
+        }
+      };
 
-        scriptElement.onerror = function() {
-          console.log('Vote file not found or error loading');
-        };
+      xhr.onerror = function() {
+        console.log('Vote file not found or error loading');
+      };
 
-        document.head.appendChild(scriptElement);
-      }, 10);
+      xhr.send();
     }
 
     function processVotes() {
