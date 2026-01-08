@@ -288,8 +288,13 @@
       };
 
       scriptElement.onerror = function(e) {
-        console.error('Failed to load votes file:', fileUrl);
-        console.error('Error:', e);
+        console.log('Vote file not found - poll has been reset');
+        // File deleted (poll reset) - clear the display
+        if (lastVoteCount > 0) {
+          lastVoteCount = 0;
+          window.GT7VoteData = [];
+          resetDisplay();
+        }
       };
 
       document.head.appendChild(scriptElement);
@@ -370,6 +375,25 @@
 
         chartContainer.appendChild(bar);
       }
+    }
+
+    // Reset display when poll is cleared
+    function resetDisplay() {
+      // Reset vote data
+      voteData.votes = {};
+      voteData.voterMap = {};
+      voteData.totalVotes = 0;
+
+      for (let i = 1; i <= 16; i++) {
+        voteData.votes[i] = { count: 0, voters: [] };
+      }
+
+      // Update total votes display
+      document.getElementById('totalVotes').textContent = 'Total Votes: 0';
+
+      // Rebuild chart with empty bars
+      initializeChart();
+      console.log('Display reset - poll cleared');
     }
 
     // Initialize chart on page load
