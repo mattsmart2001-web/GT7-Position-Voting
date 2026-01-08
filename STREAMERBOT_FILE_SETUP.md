@@ -35,30 +35,42 @@ using System.IO;
 public class CPHInline
 {
     private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.js";
+    private const string LOG_FILE = @"C:\GT7-Position-Voting\debug.txt";
 
     public bool Execute()
     {
-        string message = args["message"].ToString();
-        string username = args["userName"].ToString();
-        string[] parts = message.Split(' ');
-
-        if (parts.Length < 2) return false;
-
-        int position;
-        if (!int.TryParse(parts[1], out position) || position < 1 || position > 16)
+        try
         {
-            return false;
-        }
+            // DEBUG: Log all available keys from YouTube chat
+            File.AppendAllText(LOG_FILE, $"\n[{DateTime.Now}] Action triggered from chat\n");
+            File.AppendAllText(LOG_FILE, "Available keys:\n");
 
-        // Get avatar
-        string avatarUrl = $"https://ui-avatars.com/api/?name={username.Replace(" ", "+")}&background=random";
-        if (args.ContainsKey("profileImageUrl") && args["profileImageUrl"] != null)
-        {
-            avatarUrl = args["profileImageUrl"].ToString();
-        }
+            foreach (var entry in args)
+            {
+                File.AppendAllText(LOG_FILE, $"  Key: '{entry.Key}' = '{entry.Value}'\n");
+            }
 
-        // Build JavaScript content
-        string jsContent = $@"window.GT7VoteData = window.GT7VoteData || [];
+            string message = args["message"].ToString();
+            string username = args["userName"].ToString();
+            string[] parts = message.Split(' ');
+
+            if (parts.Length < 2) return false;
+
+            int position;
+            if (!int.TryParse(parts[1], out position) || position < 1 || position > 16)
+            {
+                return false;
+            }
+
+            // Get avatar
+            string avatarUrl = $"https://ui-avatars.com/api/?name={username.Replace(" ", "+")}&background=random";
+            if (args.ContainsKey("profileImageUrl") && args["profileImageUrl"] != null)
+            {
+                avatarUrl = args["profileImageUrl"].ToString();
+            }
+
+            // Build JavaScript content
+            string jsContent = $@"window.GT7VoteData = window.GT7VoteData || [];
 window.GT7VoteData.push({{
   username: '{EscapeJs(username)}',
   position: {position},
@@ -66,24 +78,32 @@ window.GT7VoteData.push({{
   timestamp: {DateTimeOffset.Now.ToUnixTimeMilliseconds()}
 }});";
 
-        // Write to JavaScript file
-        try
-        {
-            // Create directory if it doesn't exist
-            string dir = Path.GetDirectoryName(VOTE_FILE);
-            if (!Directory.Exists(dir))
+            // Write to JavaScript file
+            try
             {
-                Directory.CreateDirectory(dir);
+                // Create directory if it doesn't exist
+                string dir = Path.GetDirectoryName(VOTE_FILE);
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+
+                // Append vote to JavaScript file
+                File.AppendAllText(VOTE_FILE, jsContent + Environment.NewLine);
+
+                CPH.LogInfo($"Vote: {username} -> P{position}");
+                File.AppendAllText(LOG_FILE, $"SUCCESS: Vote saved - {username} -> P{position}\n");
             }
-
-            // Append vote to JavaScript file
-            File.AppendAllText(VOTE_FILE, jsContent + Environment.NewLine);
-
-            CPH.LogInfo($"Vote: {username} -> P{position}");
+            catch (Exception ex)
+            {
+                CPH.LogError($"Error saving vote: {ex.Message}");
+                File.AppendAllText(LOG_FILE, $"FILE ERROR: {ex.Message}\n");
+            }
         }
         catch (Exception ex)
         {
-            CPH.LogError($"Error saving vote: {ex.Message}");
+            File.AppendAllText(LOG_FILE, $"EXCEPTION: {ex.Message}\n{ex.StackTrace}\n");
+            CPH.LogError($"Vote action error: {ex.Message}");
         }
 
         return true;
