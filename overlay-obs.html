@@ -250,48 +250,46 @@
     let scriptElement = null;
 
     function loadVotes() {
-      // Use XMLHttpRequest to read file directly (works better in OBS)
-      const xhr = new XMLHttpRequest();
+      // Remove old script tag if it exists
+      if (scriptElement && scriptElement.parentNode) {
+        scriptElement.parentNode.removeChild(scriptElement);
+        scriptElement = null;
+      }
 
-      // Convert to file:// URL format
+      // Reset the vote data array for fresh load
+      window.GT7VoteData = [];
+
+      // Convert Windows path to file:// URL
       let fileUrl = VOTE_FILE_PATH;
-      if (!fileUrl.startsWith('file://')) {
+      if (!fileUrl.startsWith('file://') && !fileUrl.startsWith('http')) {
         // Convert C:/path to file:///C:/path
         fileUrl = 'file:///' + VOTE_FILE_PATH.replace(/\\/g, '/');
       }
 
-      // Add cache buster to URL
-      const cacheBuster = '?t=' + Date.now() + '&r=' + Math.random();
-      xhr.open('GET', fileUrl + cacheBuster, true);
+      // Create new script tag with cache buster
+      scriptElement = document.createElement('script');
+      scriptElement.type = 'text/javascript';
+      scriptElement.src = fileUrl + '?v=' + Date.now();
 
-      xhr.onload = function() {
-        if (xhr.status === 200 || xhr.status === 0) {
-          try {
-            // Reset the vote data array
-            window.GT7VoteData = [];
-
-            // Execute the JavaScript content
-            eval(xhr.responseText);
-
-            // Check if we have new votes
-            if (window.GT7VoteData && window.GT7VoteData.length > 0) {
-              if (window.GT7VoteData.length !== lastVoteCount) {
-                lastVoteCount = window.GT7VoteData.length;
-                processVotes();
-                console.log('Loaded ' + window.GT7VoteData.length + ' votes');
-              }
-            }
-          } catch (e) {
-            console.error('Error processing votes:', e);
+      scriptElement.onload = function() {
+        // Check if we have new votes
+        if (window.GT7VoteData && window.GT7VoteData.length > 0) {
+          if (window.GT7VoteData.length !== lastVoteCount) {
+            lastVoteCount = window.GT7VoteData.length;
+            processVotes();
+            console.log('Loaded ' + window.GT7VoteData.length + ' votes from ' + fileUrl);
           }
+        } else {
+          console.log('No votes in file');
         }
       };
 
-      xhr.onerror = function() {
-        console.log('Vote file not found or error loading');
+      scriptElement.onerror = function(e) {
+        console.error('Failed to load votes file:', fileUrl);
+        console.error('Error:', e);
       };
 
-      xhr.send();
+      document.head.appendChild(scriptElement);
     }
 
     function processVotes() {
