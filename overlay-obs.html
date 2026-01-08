@@ -76,23 +76,41 @@
     .bar {
       width: 100%;
       background: linear-gradient(180deg,
-        rgba(255, 50, 50, 0.9) 0%,
-        rgba(200, 0, 0, 0.9) 100%);
+        rgba(100, 180, 255, 0.9) 0%,
+        rgba(60, 140, 220, 0.9) 100%);
       border-radius: 10px 10px 0 0;
       position: relative;
       transition: height 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
       min-height: 5px;
       box-shadow:
-        0 0 20px rgba(255, 50, 50, 0.5),
+        0 0 20px rgba(100, 180, 255, 0.5),
         inset 0 -5px 20px rgba(0, 0, 0, 0.3);
     }
 
-    .bar.top-vote {
+    .bar.rank-1 {
       background: linear-gradient(180deg,
         rgba(255, 215, 0, 0.9) 0%,
         rgba(218, 165, 32, 0.9) 100%);
       box-shadow:
         0 0 30px rgba(255, 215, 0, 0.8),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar.rank-2 {
+      background: linear-gradient(180deg,
+        rgba(192, 192, 192, 0.9) 0%,
+        rgba(150, 150, 150, 0.9) 100%);
+      box-shadow:
+        0 0 25px rgba(192, 192, 192, 0.7),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar.rank-3 {
+      background: linear-gradient(180deg,
+        rgba(205, 127, 50, 0.9) 0%,
+        rgba(180, 100, 30, 0.9) 100%);
+      box-shadow:
+        0 0 25px rgba(205, 127, 50, 0.7),
         inset 0 -5px 20px rgba(0, 0, 0, 0.3);
     }
 
@@ -327,13 +345,24 @@
 
       // Fixed scale: 30 votes = 100% height
       const MAX_VOTE_SCALE = 30;
-      let topPosition = null;
-      let topVotes = 0;
 
-      Object.keys(voteData.votes).forEach(pos => {
-        if (voteData.votes[pos].count > topVotes) {
-          topVotes = voteData.votes[pos].count;
-          topPosition = pos;
+      // Calculate rankings based on vote counts
+      const positionsWithVotes = Object.keys(voteData.votes)
+        .map(pos => ({ position: pos, count: voteData.votes[pos].count }))
+        .filter(p => p.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+      const rankings = {};
+      let currentRank = 1;
+      let lastCount = -1;
+
+      positionsWithVotes.forEach(p => {
+        if (p.count !== lastCount) {
+          rankings[p.position] = currentRank;
+          lastCount = p.count;
+          currentRank++;
+        } else {
+          rankings[p.position] = rankings[positionsWithVotes.find(x => x.count === lastCount).position];
         }
       });
 
@@ -344,7 +373,12 @@
       for (let i = 1; i <= 16; i++) {
         const data = voteData.votes[i];
         const heightPercent = Math.min((data.count / MAX_VOTE_SCALE) * 100, 100);
-        const isTop = i == topPosition && topVotes > 0;
+        const rank = rankings[i];
+
+        let rankClass = '';
+        if (rank === 1) rankClass = 'rank-1';
+        else if (rank === 2) rankClass = 'rank-2';
+        else if (rank === 3) rankClass = 'rank-3';
 
         const bar = document.createElement('div');
         bar.className = 'position-bar';
@@ -356,10 +390,10 @@
         });
 
         bar.innerHTML = `
-          <div class="bar ${isTop ? 'top-vote' : ''}" style="height: ${Math.max(heightPercent, 0)}%;">
+          <div class="bar ${rankClass}" style="height: ${Math.max(heightPercent, 0)}%;">
             ${data.count > 0 ? `<div class="vote-count">${data.count}</div>` : ''}
           </div>
-          <div class="position-label ${isTop ? 'top-position' : ''}">P${i}</div>
+          <div class="position-label ${rank === 1 ? 'top-position' : ''}">P${i}</div>
           <div class="avatars-container">${avatarsHtml}</div>
         `;
 
