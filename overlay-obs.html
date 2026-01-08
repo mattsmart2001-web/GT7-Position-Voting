@@ -210,7 +210,10 @@
 
   <script>
     // Configuration
-    const VOTE_FILE_PATH = 'C:/GT7-Position-Voting/votes.js';
+    // Use relative path if served via HTTP, absolute file:// if opened directly
+    const VOTE_FILE_PATH = window.location.protocol === 'file:'
+      ? 'C:/GT7-Position-Voting/votes.js'
+      : 'votes.js';
 
     // Initialize vote data
     window.GT7VoteData = window.GT7VoteData || [];
@@ -259,10 +262,10 @@
       // Reset the vote data array for fresh load
       window.GT7VoteData = [];
 
-      // Convert Windows path to file:// URL
+      // Convert Windows path to file:// URL if needed
       let fileUrl = VOTE_FILE_PATH;
-      if (!fileUrl.startsWith('file://') && !fileUrl.startsWith('http')) {
-        // Convert C:/path to file:///C:/path
+      if (window.location.protocol === 'file:' && !fileUrl.startsWith('file://') && !fileUrl.startsWith('http')) {
+        // Convert C:/path to file:///C:/path for direct file access
         fileUrl = 'file:///' + VOTE_FILE_PATH.replace(/\\/g, '/');
       }
 
