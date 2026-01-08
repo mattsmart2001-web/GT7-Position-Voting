@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920, height=1080">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>GT7 Position Voting Overlay</title>
   <style>
     * {
@@ -250,30 +253,36 @@
       // Remove old script tag if it exists
       if (scriptElement && scriptElement.parentNode) {
         scriptElement.parentNode.removeChild(scriptElement);
+        scriptElement = null;
       }
 
       // Reset the vote data array for fresh load
       window.GT7VoteData = [];
 
-      // Create new script tag with cache buster
-      scriptElement = document.createElement('script');
-      scriptElement.src = VOTE_FILE_PATH + '?t=' + Date.now();
+      // Small delay to ensure cleanup
+      setTimeout(function() {
+        // Create new script tag with aggressive cache buster
+        scriptElement = document.createElement('script');
+        scriptElement.type = 'text/javascript';
+        scriptElement.id = 'vote-script-' + Date.now();
+        scriptElement.src = VOTE_FILE_PATH + '?v=' + Date.now() + '&r=' + Math.random();
 
-      scriptElement.onload = function() {
-        // Check if we have new votes
-        if (window.GT7VoteData && window.GT7VoteData.length > 0) {
-          if (window.GT7VoteData.length !== lastVoteCount) {
-            lastVoteCount = window.GT7VoteData.length;
-            processVotes();
+        scriptElement.onload = function() {
+          // Check if we have new votes
+          if (window.GT7VoteData && window.GT7VoteData.length > 0) {
+            if (window.GT7VoteData.length !== lastVoteCount) {
+              lastVoteCount = window.GT7VoteData.length;
+              processVotes();
+            }
           }
-        }
-      };
+        };
 
-      scriptElement.onerror = function() {
-        console.log('Vote file not found or error loading');
-      };
+        scriptElement.onerror = function() {
+          console.log('Vote file not found or error loading');
+        };
 
-      document.head.appendChild(scriptElement);
+        document.head.appendChild(scriptElement);
+      }, 10);
     }
 
     function processVotes() {
@@ -356,11 +365,11 @@
     // Initialize chart on page load
     initializeChart();
 
-    // Poll for changes every 500ms
-    setInterval(loadVotes, 500);
+    // Poll for changes every 1000ms (slower for OBS compatibility)
+    setInterval(loadVotes, 1000);
 
-    // Initial load
-    loadVotes();
+    // Initial load after a brief delay
+    setTimeout(loadVotes, 500);
   </script>
 </body>
 </html>
