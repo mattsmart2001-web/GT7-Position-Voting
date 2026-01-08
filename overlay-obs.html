@@ -192,14 +192,6 @@
   </style>
 </head>
 <body>
-  <div class="active-indicator">
-    🔴 LIVE VOTING
-  </div>
-
-  <div class="total-votes" id="totalVotes">
-    Total Votes: 0
-  </div>
-
   <div class="container">
     <div class="title">WHERE WILL I FINISH? 🏁</div>
 
@@ -333,9 +325,6 @@
         voteData.totalVotes++;
       });
 
-      // Update display
-      document.getElementById('totalVotes').textContent = `Total Votes: ${voteData.totalVotes}`;
-
       // Fixed scale: 30 votes = 100% height
       const MAX_VOTE_SCALE = 30;
       let topPosition = null;
@@ -398,9 +387,6 @@
         for (let i = 1; i <= 16; i++) {
           voteData.votes[i] = { count: 0, voters: [] };
         }
-
-        // Update total votes display
-        document.getElementById('totalVotes').textContent = 'Total Votes: 0';
 
         // Rebuild chart with empty bars
         initializeChart();
