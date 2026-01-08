@@ -24,7 +24,7 @@
 
     .container {
       position: absolute;
-      bottom: 50px;
+      top: 30px;
       left: 50%;
       transform: translateX(-50%);
       width: 90%;
@@ -54,7 +54,7 @@
       display: flex;
       justify-content: space-between;
       align-items: flex-end;
-      height: 600px;
+      height: 420px;
       padding: 0 20px;
       background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
       border-radius: 20px;
@@ -336,7 +336,8 @@
       // Update display
       document.getElementById('totalVotes').textContent = `Total Votes: ${voteData.totalVotes}`;
 
-      const maxVotes = Math.max(...Object.values(voteData.votes).map(v => v.count), 1);
+      // Fixed scale: 30 votes = 100% height
+      const MAX_VOTE_SCALE = 30;
       let topPosition = null;
       let topVotes = 0;
 
@@ -353,7 +354,7 @@
 
       for (let i = 1; i <= 16; i++) {
         const data = voteData.votes[i];
-        const heightPercent = maxVotes > 0 ? (data.count / maxVotes) * 100 : 0;
+        const heightPercent = Math.min((data.count / MAX_VOTE_SCALE) * 100, 100);
         const isTop = i == topPosition && topVotes > 0;
 
         const bar = document.createElement('div');
@@ -379,21 +380,32 @@
 
     // Reset display when poll is cleared
     function resetDisplay() {
-      // Reset vote data
-      voteData.votes = {};
-      voteData.voterMap = {};
-      voteData.totalVotes = 0;
+      // Animate all bars down to 0
+      const chartContainer = document.getElementById('chartContainer');
+      const allBars = chartContainer.querySelectorAll('.bar');
 
-      for (let i = 1; i <= 16; i++) {
-        voteData.votes[i] = { count: 0, voters: [] };
-      }
+      allBars.forEach(bar => {
+        bar.style.height = '0%';
+      });
 
-      // Update total votes display
-      document.getElementById('totalVotes').textContent = 'Total Votes: 0';
+      // After animation completes, reset data and rebuild
+      setTimeout(() => {
+        // Reset vote data
+        voteData.votes = {};
+        voteData.voterMap = {};
+        voteData.totalVotes = 0;
 
-      // Rebuild chart with empty bars
-      initializeChart();
-      console.log('Display reset - poll cleared');
+        for (let i = 1; i <= 16; i++) {
+          voteData.votes[i] = { count: 0, voters: [] };
+        }
+
+        // Update total votes display
+        document.getElementById('totalVotes').textContent = 'Total Votes: 0';
+
+        // Rebuild chart with empty bars
+        initializeChart();
+        console.log('Display reset - poll cleared');
+      }, 500); // Wait for CSS transition to complete
     }
 
     // Initialize chart on page load
