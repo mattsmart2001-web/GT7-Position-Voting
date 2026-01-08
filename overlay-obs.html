@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080">
+  <meta http-equiv="refresh" content="2">
+  <title>GT7 Position Voting Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      width: 1920px;
+      height: 1080px;
+    }
+
+    .container {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 1800px;
+    }
+
+    .title {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 48px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow:
+        0 0 20px rgba(255, 50, 50, 0.8),
+        0 0 40px rgba(255, 50, 50, 0.6),
+        3px 3px 10px rgba(0, 0, 0, 0.9);
+      letter-spacing: 2px;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+
+    .chart-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      height: 600px;
+      padding: 0 20px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
+      border-radius: 20px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .position-bar {
+      flex: 1;
+      margin: 0 5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .bar {
+      width: 100%;
+      background: linear-gradient(180deg,
+        rgba(255, 50, 50, 0.9) 0%,
+        rgba(200, 0, 0, 0.9) 100%);
+      border-radius: 10px 10px 0 0;
+      position: relative;
+      transition: height 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      min-height: 5px;
+      box-shadow:
+        0 0 20px rgba(255, 50, 50, 0.5),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .bar.top-vote {
+      background: linear-gradient(180deg,
+        rgba(255, 215, 0, 0.9) 0%,
+        rgba(218, 165, 32, 0.9) 100%);
+      box-shadow:
+        0 0 30px rgba(255, 215, 0, 0.8),
+        inset 0 -5px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .vote-count {
+      position: absolute;
+      top: -35px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.6);
+      padding: 5px 12px;
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      white-space: nowrap;
+    }
+
+    .position-label {
+      margin-top: 10px;
+      font-size: 28px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .position-label.top-position {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.8), rgba(218, 165, 32, 0.8));
+      color: #000;
+      border-color: rgba(255, 215, 0, 0.5);
+      animation: shimmer 2s ease-in-out infinite;
+    }
+
+    @keyframes shimmer {
+      0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+      50% { box-shadow: 0 0 40px rgba(255, 215, 0, 1); }
+    }
+
+    .avatars-container {
+      margin-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 5px;
+      max-height: 100px;
+      overflow: hidden;
+    }
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+
+    .total-votes {
+      position: absolute;
+      top: 30px;
+      right: 50px;
+      font-size: 32px;
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px 30px;
+      border-radius: 15px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .active-indicator {
+      position: absolute;
+      top: 30px;
+      left: 50px;
+      font-size: 28px;
+      color: #0f0;
+      text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px 30px;
+      border-radius: 15px;
+      border: 2px solid rgba(0, 255, 0, 0.3);
+      animation: blink 1.5s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="active-indicator">
+    🔴 LIVE VOTING
+  </div>
+
+  <div class="total-votes" id="totalVotes">
+    Total Votes: 0
+  </div>
+
+  <div class="container">
+    <div class="title">WHERE WILL I FINISH? 🏁</div>
+
+    <div class="chart-container" id="chartContainer">
+      <!-- Position bars will be generated here -->
+    </div>
+  </div>
+
+  <!-- Include the votes data file -->
+  <script src="C:/GT7-Position-Voting/votes.js"></script>
+
+  <script>
+    // Process votes
+    window.GT7VoteData = window.GT7VoteData || [];
+
+    let voteData = {
+      votes: {},
+      totalVotes: 0,
+      voterMap: {}
+    };
+
+    // Initialize positions
+    for (let i = 1; i <= 16; i++) {
+      voteData.votes[i] = { count: 0, voters: [] };
+    }
+
+    // Process all votes
+    window.GT7VoteData.forEach(vote => {
+      const pos = vote.position;
+
+      if (voteData.voterMap[vote.username]) {
+        const oldPos = voteData.voterMap[vote.username];
+        voteData.votes[oldPos].voters = voteData.votes[oldPos].voters.filter(
+          v => v.username !== vote.username
+        );
+        voteData.votes[oldPos].count--;
+        voteData.totalVotes--;
+      }
+
+      voteData.votes[pos].voters.push({
+        username: vote.username,
+        avatar: vote.avatar,
+        timestamp: vote.timestamp
+      });
+      voteData.votes[pos].count++;
+      voteData.voterMap[vote.username] = pos;
+      voteData.totalVotes++;
+    });
+
+    // Update display
+    document.getElementById('totalVotes').textContent = `Total Votes: ${voteData.totalVotes}`;
+
+    const maxVotes = Math.max(...Object.values(voteData.votes).map(v => v.count), 1);
+    let topPosition = null;
+    let topVotes = 0;
+
+    Object.keys(voteData.votes).forEach(pos => {
+      if (voteData.votes[pos].count > topVotes) {
+        topVotes = voteData.votes[pos].count;
+        topPosition = pos;
+      }
+    });
+
+    // Build chart
+    const chartContainer = document.getElementById('chartContainer');
+    chartContainer.innerHTML = '';
+
+    for (let i = 1; i <= 16; i++) {
+      const data = voteData.votes[i];
+      const heightPercent = maxVotes > 0 ? (data.count / maxVotes) * 100 : 0;
+      const isTop = i == topPosition && topVotes > 0;
+
+      const bar = document.createElement('div');
+      bar.className = 'position-bar';
+
+      let avatarsHtml = '';
+      const recentVoters = data.voters.slice(-6);
+      recentVoters.forEach(voter => {
+        avatarsHtml += `<img src="${voter.avatar}" class="avatar" title="${voter.username}" alt="${voter.username}">`;
+      });
+
+      bar.innerHTML = `
+        <div class="bar ${isTop ? 'top-vote' : ''}" style="height: ${Math.max(heightPercent, 0)}%;">
+          ${data.count > 0 ? `<div class="vote-count">${data.count}</div>` : ''}
+        </div>
+        <div class="position-label ${isTop ? 'top-position' : ''}">P${i}</div>
+        <div class="avatars-container">${avatarsHtml}</div>
+      `;
+
+      chartContainer.appendChild(bar);
+    }
+  </script>
+</body>
+</html>
