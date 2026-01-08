@@ -223,6 +223,25 @@
       voteData.votes[i] = { count: 0, voters: [] };
     }
 
+    // Initialize the chart with empty bars
+    function initializeChart() {
+      const chartContainer = document.getElementById('chartContainer');
+      chartContainer.innerHTML = '';
+
+      for (let i = 1; i <= 16; i++) {
+        const bar = document.createElement('div');
+        bar.className = 'position-bar';
+
+        bar.innerHTML = `
+          <div class="bar" style="height: 0%;"></div>
+          <div class="position-label">P${i}</div>
+          <div class="avatars-container"></div>
+        `;
+
+        chartContainer.appendChild(bar);
+      }
+    }
+
     // Dynamic loading with cache-busting for OBS
     let lastVoteCount = 0;
     let scriptElement = null;
@@ -333,6 +352,9 @@
         chartContainer.appendChild(bar);
       }
     }
+
+    // Initialize chart on page load
+    initializeChart();
 
     // Poll for changes every 500ms
     setInterval(loadVotes, 500);
