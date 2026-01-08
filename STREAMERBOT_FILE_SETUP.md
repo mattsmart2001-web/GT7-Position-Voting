@@ -62,11 +62,11 @@ public class CPHInline
                 return false;
             }
 
-            // Get avatar
+            // Get avatar from YouTube profile
             string avatarUrl = $"https://ui-avatars.com/api/?name={username.Replace(" ", "+")}&background=random";
-            if (args.ContainsKey("profileImageUrl") && args["profileImageUrl"] != null)
+            if (args.ContainsKey("userProfileUrl") && args["userProfileUrl"] != null)
             {
-                avatarUrl = args["profileImageUrl"].ToString();
+                avatarUrl = args["userProfileUrl"].ToString();
             }
 
             // Build JavaScript content
