@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920, height=1080">
-  <meta http-equiv="refresh" content="2">
   <title>GT7 Position Voting Overlay</title>
   <style>
     * {
@@ -206,11 +205,11 @@
     </div>
   </div>
 
-  <!-- Include the votes data file -->
-  <script src="C:/GT7-Position-Voting/votes.js"></script>
-
   <script>
-    // Process votes
+    // Configuration
+    const VOTE_FILE_PATH = 'C:/GT7-Position-Voting/votes.js';
+
+    // Initialize vote data
     window.GT7VoteData = window.GT7VoteData || [];
 
     let voteData = {
@@ -224,71 +223,122 @@
       voteData.votes[i] = { count: 0, voters: [] };
     }
 
-    // Process all votes
-    window.GT7VoteData.forEach(vote => {
-      const pos = vote.position;
+    // Dynamic loading with cache-busting for OBS
+    let lastVoteCount = 0;
+    let scriptElement = null;
 
-      if (voteData.voterMap[vote.username]) {
-        const oldPos = voteData.voterMap[vote.username];
-        voteData.votes[oldPos].voters = voteData.votes[oldPos].voters.filter(
-          v => v.username !== vote.username
-        );
-        voteData.votes[oldPos].count--;
-        voteData.totalVotes--;
+    function loadVotes() {
+      // Remove old script tag if it exists
+      if (scriptElement && scriptElement.parentNode) {
+        scriptElement.parentNode.removeChild(scriptElement);
       }
 
-      voteData.votes[pos].voters.push({
-        username: vote.username,
-        avatar: vote.avatar,
-        timestamp: vote.timestamp
-      });
-      voteData.votes[pos].count++;
-      voteData.voterMap[vote.username] = pos;
-      voteData.totalVotes++;
-    });
+      // Reset the vote data array for fresh load
+      window.GT7VoteData = [];
 
-    // Update display
-    document.getElementById('totalVotes').textContent = `Total Votes: ${voteData.totalVotes}`;
+      // Create new script tag with cache buster
+      scriptElement = document.createElement('script');
+      scriptElement.src = VOTE_FILE_PATH + '?t=' + Date.now();
 
-    const maxVotes = Math.max(...Object.values(voteData.votes).map(v => v.count), 1);
-    let topPosition = null;
-    let topVotes = 0;
+      scriptElement.onload = function() {
+        // Check if we have new votes
+        if (window.GT7VoteData && window.GT7VoteData.length > 0) {
+          if (window.GT7VoteData.length !== lastVoteCount) {
+            lastVoteCount = window.GT7VoteData.length;
+            processVotes();
+          }
+        }
+      };
 
-    Object.keys(voteData.votes).forEach(pos => {
-      if (voteData.votes[pos].count > topVotes) {
-        topVotes = voteData.votes[pos].count;
-        topPosition = pos;
-      }
-    });
+      scriptElement.onerror = function() {
+        console.log('Vote file not found or error loading');
+      };
 
-    // Build chart
-    const chartContainer = document.getElementById('chartContainer');
-    chartContainer.innerHTML = '';
-
-    for (let i = 1; i <= 16; i++) {
-      const data = voteData.votes[i];
-      const heightPercent = maxVotes > 0 ? (data.count / maxVotes) * 100 : 0;
-      const isTop = i == topPosition && topVotes > 0;
-
-      const bar = document.createElement('div');
-      bar.className = 'position-bar';
-
-      let avatarsHtml = '';
-      const recentVoters = data.voters.slice(-6);
-      recentVoters.forEach(voter => {
-        avatarsHtml += `<img src="${voter.avatar}" class="avatar" title="${voter.username}" alt="${voter.username}">`;
-      });
-
-      bar.innerHTML = `
-        <div class="bar ${isTop ? 'top-vote' : ''}" style="height: ${Math.max(heightPercent, 0)}%;">
-          ${data.count > 0 ? `<div class="vote-count">${data.count}</div>` : ''}
-        </div>
-        <div class="position-label ${isTop ? 'top-position' : ''}">P${i}</div>
-        <div class="avatars-container">${avatarsHtml}</div>
-      `;
-
-      chartContainer.appendChild(bar);
+      document.head.appendChild(scriptElement);
     }
+
+    function processVotes() {
+      // Reset vote data
+      voteData.votes = {};
+      voteData.voterMap = {};
+      voteData.totalVotes = 0;
+
+      for (let i = 1; i <= 16; i++) {
+        voteData.votes[i] = { count: 0, voters: [] };
+      }
+
+      // Process all votes
+      window.GT7VoteData.forEach(vote => {
+        const pos = vote.position;
+
+        if (voteData.voterMap[vote.username]) {
+          const oldPos = voteData.voterMap[vote.username];
+          voteData.votes[oldPos].voters = voteData.votes[oldPos].voters.filter(
+            v => v.username !== vote.username
+          );
+          voteData.votes[oldPos].count--;
+          voteData.totalVotes--;
+        }
+
+        voteData.votes[pos].voters.push({
+          username: vote.username,
+          avatar: vote.avatar,
+          timestamp: vote.timestamp
+        });
+        voteData.votes[pos].count++;
+        voteData.voterMap[vote.username] = pos;
+        voteData.totalVotes++;
+      });
+
+      // Update display
+      document.getElementById('totalVotes').textContent = `Total Votes: ${voteData.totalVotes}`;
+
+      const maxVotes = Math.max(...Object.values(voteData.votes).map(v => v.count), 1);
+      let topPosition = null;
+      let topVotes = 0;
+
+      Object.keys(voteData.votes).forEach(pos => {
+        if (voteData.votes[pos].count > topVotes) {
+          topVotes = voteData.votes[pos].count;
+          topPosition = pos;
+        }
+      });
+
+      // Build chart
+      const chartContainer = document.getElementById('chartContainer');
+      chartContainer.innerHTML = '';
+
+      for (let i = 1; i <= 16; i++) {
+        const data = voteData.votes[i];
+        const heightPercent = maxVotes > 0 ? (data.count / maxVotes) * 100 : 0;
+        const isTop = i == topPosition && topVotes > 0;
+
+        const bar = document.createElement('div');
+        bar.className = 'position-bar';
+
+        let avatarsHtml = '';
+        const recentVoters = data.voters.slice(-6);
+        recentVoters.forEach(voter => {
+          avatarsHtml += `<img src="${voter.avatar}" class="avatar" title="${voter.username}" alt="${voter.username}">`;
+        });
+
+        bar.innerHTML = `
+          <div class="bar ${isTop ? 'top-vote' : ''}" style="height: ${Math.max(heightPercent, 0)}%;">
+            ${data.count > 0 ? `<div class="vote-count">${data.count}</div>` : ''}
+          </div>
+          <div class="position-label ${isTop ? 'top-position' : ''}">P${i}</div>
+          <div class="avatars-container">${avatarsHtml}</div>
+        `;
+
+        chartContainer.appendChild(bar);
+      }
+    }
+
+    // Poll for changes every 500ms
+    setInterval(loadVotes, 500);
+
+    // Initial load
+    loadVotes();
   </script>
 </body>
 </html>
