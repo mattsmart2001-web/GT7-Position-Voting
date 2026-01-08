@@ -253,9 +253,16 @@
       // Use XMLHttpRequest to read file directly (works better in OBS)
       const xhr = new XMLHttpRequest();
 
+      // Convert to file:// URL format
+      let fileUrl = VOTE_FILE_PATH;
+      if (!fileUrl.startsWith('file://')) {
+        // Convert C:/path to file:///C:/path
+        fileUrl = 'file:///' + VOTE_FILE_PATH.replace(/\\/g, '/');
+      }
+
       // Add cache buster to URL
       const cacheBuster = '?t=' + Date.now() + '&r=' + Math.random();
-      xhr.open('GET', VOTE_FILE_PATH + cacheBuster, true);
+      xhr.open('GET', fileUrl + cacheBuster, true);
 
       xhr.onload = function() {
         if (xhr.status === 200 || xhr.status === 0) {
@@ -271,6 +278,7 @@
               if (window.GT7VoteData.length !== lastVoteCount) {
                 lastVoteCount = window.GT7VoteData.length;
                 processVotes();
+                console.log('Loaded ' + window.GT7VoteData.length + ' votes');
               }
             }
           } catch (e) {
