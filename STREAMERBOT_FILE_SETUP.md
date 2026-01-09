@@ -35,12 +35,20 @@ using System.IO;
 public class CPHInline
 {
     private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.js";
+    private const string LOCK_FILE = @"C:\GT7-Position-Voting\locked.txt";
     private const string LOG_FILE = @"C:\GT7-Position-Voting\debug.txt";
 
     public bool Execute()
     {
         try
         {
+            // Check if voting is locked
+            if (File.Exists(LOCK_FILE))
+            {
+                CPH.LogInfo("Vote rejected - voting is locked");
+                return false;
+            }
+
             // DEBUG: Log all available keys from YouTube chat
             File.AppendAllText(LOG_FILE, $"\n[{DateTime.Now}] Action triggered from chat\n");
             File.AppendAllText(LOG_FILE, "Available keys:\n");
@@ -164,7 +172,88 @@ public class CPHInline
 }
 ```
 
-**Note:** The poll is always "active" with this simple version. Votes start as soon as someone types `!vote`. To reset for a new race, just use `!resetpoll`.
+#### Lock Votes Action (Freeze Voting)
+
+Lock the poll so viewers can't change their votes once the race starts:
+
+1. Create **Action**: "GT7 Lock Votes"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!lockvotes` (Moderators only)
+3. Add **Sub-Action**: Core → Execute C# Code
+
+```csharp
+using System;
+using System.IO;
+
+public class CPHInline
+{
+    private const string LOCK_FILE = @"C:\GT7-Position-Voting\locked.txt";
+
+    public bool Execute()
+    {
+        try
+        {
+            // Create lock file
+            File.WriteAllText(LOCK_FILE, DateTime.Now.ToString());
+            CPH.LogInfo("Voting locked");
+            CPH.SendYouTubeMessage("🔒 Voting is now LOCKED! No more vote changes allowed!");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error locking votes: {ex.Message}");
+        }
+
+        return true;
+    }
+}
+```
+
+#### Unlock Votes Action (Re-enable Voting)
+
+Unlock the poll to allow voting again:
+
+1. Create **Action**: "GT7 Unlock Votes"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!unlockvotes` (Moderators only)
+3. Add **Sub-Action**: Core → Execute C# Code
+
+```csharp
+using System;
+using System.IO;
+
+public class CPHInline
+{
+    private const string LOCK_FILE = @"C:\GT7-Position-Voting\locked.txt";
+
+    public bool Execute()
+    {
+        try
+        {
+            // Delete lock file
+            if (File.Exists(LOCK_FILE))
+            {
+                File.Delete(LOCK_FILE);
+                CPH.LogInfo("Voting unlocked");
+                CPH.SendYouTubeMessage("🔓 Voting is now UNLOCKED! Type !vote [1-16] to predict!");
+            }
+            else
+            {
+                CPH.SendYouTubeMessage("Voting is already unlocked!");
+            }
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error unlocking votes: {ex.Message}");
+        }
+
+        return true;
+    }
+}
+```
+
+**Workflow:**
+1. Start race → viewers type `!vote [1-16]`
+2. Race begins → type `!lockvotes` to freeze votes
+3. Race ends → type `!resetpoll` to clear for next race
+4. (Optional) Type `!unlockvotes` to allow voting before locking again
 
 ## Test It!
 

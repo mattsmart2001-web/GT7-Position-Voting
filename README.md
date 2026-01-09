@@ -57,6 +57,22 @@ Create two actions in Streamerbot:
 4. Paste the reset code from `STREAMERBOT_FILE_SETUP.md`
 5. **Save**
 
+#### Lock Votes Action (!lockvotes) - Optional
+
+1. Create **Action**: "GT7 Lock Votes"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!lockvotes` (Moderators only)
+3. Add **Sub-Action**: Core → Execute C# Code
+4. Paste the lock code from `STREAMERBOT_FILE_SETUP.md`
+5. **Save**
+
+#### Unlock Votes Action (!unlockvotes) - Optional
+
+1. Create **Action**: "GT7 Unlock Votes"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!unlockvotes` (Moderators only)
+3. Add **Sub-Action**: Core → Execute C# Code
+4. Paste the unlock code from `STREAMERBOT_FILE_SETUP.md`
+5. **Save**
+
 ## How It Works
 
 1. **Streamerbot** captures `!vote [1-16]` commands from YouTube chat
@@ -74,8 +90,10 @@ Create two actions in Streamerbot:
 - Can change vote by voting again
 
 ### Streamer
-- Type `!resetpoll` in chat to clear votes for next race
-- Overlay automatically resets without manual OBS refresh
+- Type `!lockvotes` to freeze voting (before race starts)
+- Type `!unlockvotes` to allow voting again
+- Type `!resetpoll` to clear votes for next race
+- Overlay automatically updates without manual OBS refresh
 - Results display in real-time as viewers vote
 
 ## Documentation
@@ -130,6 +148,8 @@ The overlay is fully customizable! Edit `overlay-obs.html` to:
 | Command | Who Can Use | What It Does |
 |---------|-------------|--------------|
 | `!vote [1-16]` | Everyone | Vote for finishing position |
+| `!lockvotes` | Moderators | Freeze voting (no more changes) |
+| `!unlockvotes` | Moderators | Allow voting again |
 | `!resetpoll` | Moderators | Clear all votes for new race |
 
 ## License
