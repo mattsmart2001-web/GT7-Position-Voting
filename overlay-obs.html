@@ -29,6 +29,10 @@
       transform: translateX(-50%);
       width: 90%;
       max-width: 1800px;
+      border: 3px solid white;
+      border-radius: 25px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.1);
     }
 
     .title {
@@ -390,9 +394,7 @@
         });
 
         bar.innerHTML = `
-          <div class="bar ${rankClass}" style="height: ${Math.max(heightPercent, 0)}%;">
-            ${data.count > 0 ? `<div class="vote-count">${data.count}</div>` : ''}
-          </div>
+          <div class="bar ${rankClass}" style="height: ${Math.max(heightPercent, 0)}%;"></div>
           <div class="position-label ${rank === 1 ? 'top-position' : ''}">P${i}</div>
           <div class="avatars-container">${avatarsHtml}</div>
         `;
