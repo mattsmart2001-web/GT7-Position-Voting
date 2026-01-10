@@ -368,20 +368,22 @@ public class CPHInline
         try
         {
             string content = File.ReadAllText(VOTE_FILE);
-            string[] lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (string line in lines)
+            // Split by .push({ to find each vote object
+            string[] voteBlocks = content.Split(new[] { ".push({" }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string block in voteBlocks)
             {
-                if (!line.Contains("username:")) continue;
+                if (!block.Contains("username")) continue;
 
-                string username = ExtractValue(line, "username: '", "'");
-                string posStr = ExtractValue(line, "position: ", ",");
-                string avatar = ExtractValue(line, "avatar: '", "'");
+                string username = ExtractValue(block, "username: '", "'");
+                string posStr = ExtractValue(block, "position: ", ",");
+                string avatar = ExtractValue(block, "avatar: '", "'");
 
                 if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(posStr)) continue;
 
                 int position;
-                if (!int.TryParse(posStr, out position)) continue;
+                if (!int.TryParse(posStr.Trim(), out position)) continue;
 
                 // Only keep last vote per user
                 voterMap[username] = new Vote
