@@ -132,16 +132,16 @@ public class CPHInline
     {
         try
         {
-            if (File.Exists(LOCK_FILE))
+            // Only unlock if currently locked to prevent spam
+            if (!File.Exists(LOCK_FILE))
             {
-                File.Delete(LOCK_FILE);
-                CPH.LogInfo("Voting unlocked");
-                CPH.SendYouTubeMessage("🔓 Voting is now UNLOCKED! Type !vote [1-16] to predict!");
+                CPH.LogInfo("Voting is already unlocked");
+                return false;
             }
-            else
-            {
-                CPH.SendYouTubeMessage("Voting is already unlocked!");
-            }
+
+            File.Delete(LOCK_FILE);
+            CPH.LogInfo("Voting unlocked");
+            CPH.SendYouTubeMessage("🔓 Voting is now UNLOCKED! Type !vote [1-16] to predict!");
         }
         catch (Exception ex)
         {
