@@ -48,6 +48,26 @@ A live voting system for Gran Turismo 7 races that displays real-time YouTube vi
 5. Position it near your camera or wherever you prefer
 6. Click **OK**
 
+### Website Leaderboard Display
+
+Want to show the complete leaderboard on your website? Access the full leaderboard page:
+
+**URL**: `http://localhost:8000/leaderboard-full.html`
+
+This displays:
+- ✅ **Complete rankings** - All players, not just top 10
+- ✅ **Real-time updates** - Auto-refreshes every 2 seconds
+- ✅ **Statistics** - Total players, total predictions, last update time
+- ✅ **Responsive design** - Works on desktop and mobile
+- ✅ **Embed-friendly** - Can be embedded in an iframe
+
+**To embed on your website:**
+```html
+<iframe src="http://localhost:8000/leaderboard-full.html" width="100%" height="800px" frameborder="0"></iframe>
+```
+
+**Note**: For public website embedding, you'll need to host the files on a web server accessible from the internet, not just localhost.
+
 ### Step 3: Set Up Streamerbot
 
 Create two actions in Streamerbot:
@@ -126,12 +146,16 @@ Create two actions in Streamerbot:
 
 ```
 GT7-Position-Voting/
-├── overlay-obs.html          # Main overlay (served via HTTP)
+├── overlay-obs.html           # Main voting overlay (for OBS)
+├── leaderboard-overlay.html   # Top 10 leaderboard (for OBS)
+├── leaderboard-full.html      # Complete leaderboard (for website)
 ├── START_SERVER.bat           # Python HTTP server launcher
-├── OBS_SETUP.md              # OBS setup instructions
-├── STREAMERBOT_FILE_SETUP.md # Streamerbot C# code (debug version)
-├── STREAMERBOT_CLEAN_CODE.md # Streamerbot C# code (production)
-└── votes.js                  # Vote data (created by Streamerbot)
+├── OBS_SETUP.md               # OBS setup instructions
+├── STREAMDECK_SETUP.md        # Stream Deck 16-button setup guide
+├── STREAMERBOT_FILE_SETUP.md  # Streamerbot C# code (debug version)
+├── STREAMERBOT_CLEAN_CODE.md  # Streamerbot C# code (production)
+├── votes.js                   # Vote data (created by Streamerbot)
+└── leaderboard.js             # Persistent leaderboard data
 ```
 
 ## Troubleshooting
