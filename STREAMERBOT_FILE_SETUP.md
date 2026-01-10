@@ -192,6 +192,13 @@ public class CPHInline
     {
         try
         {
+            // Check if already locked
+            if (File.Exists(LOCK_FILE))
+            {
+                CPH.LogInfo("Voting is already locked");
+                return false;
+            }
+
             // Create lock file
             File.WriteAllText(LOCK_FILE, DateTime.Now.ToString());
             CPH.LogInfo("Voting locked");

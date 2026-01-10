@@ -97,6 +97,13 @@ public class CPHInline
     {
         try
         {
+            // Check if already locked to prevent repeated messages
+            if (File.Exists(LOCK_FILE))
+            {
+                CPH.LogInfo("Voting is already locked");
+                return false;
+            }
+
             File.WriteAllText(LOCK_FILE, DateTime.Now.ToString());
             CPH.LogInfo("Voting locked");
             CPH.SendYouTubeMessage("🔒 Voting is now LOCKED! No more vote changes allowed!");
