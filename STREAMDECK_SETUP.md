@@ -4,7 +4,7 @@ This guide will help you set up 16 buttons on your Stream Deck to quickly award 
 
 ## Overview
 
-Instead of typing `!result [1-16]` in chat, you'll press a button on your Stream Deck corresponding to your finish position. This is much faster during live streams!
+Press a button on your Stream Deck corresponding to your finish position. No chat commands needed - direct trigger from Stream Deck!
 
 ## Prerequisites
 
@@ -12,59 +12,301 @@ Instead of typing `!result [1-16]` in chat, you'll press a button on your Stream
 2. **Streamerbot** plugin installed in Stream Deck
 3. **Streamerbot** running and connected to YouTube
 
-## Step 1: Create 16 Actions in Streamerbot
+## Step 1: Create the First Action in Streamerbot
 
-You need to create 16 actions in Streamerbot, one for each position.
-
-### Quick Method (Copy & Modify):
+We'll create one action with the full C# code, then duplicate it 15 times.
 
 1. **Open Streamerbot**
 2. In the **Actions** tab, click **Add**
 3. **Name**: `GT7 Result P1`
-4. Click **Add** under Sub-Actions
-5. Select: **Platforms → YouTube → Send Message to Channel**
-6. In the **Message** field, type: `!result 1`
-7. Click **OK**
-8. Click **Save**
+4. **Do NOT add a trigger** (no chat command needed!)
+5. Click **Add** under Sub-Actions
+6. Select: **Core → Execute Code → Execute C# Code**
+7. **Paste this code** (see below)
+8. Click **OK**
+9. Click **Save**
 
-Now **duplicate this action 15 times** and modify each:
+### C# Code for Position 1:
+
+```csharp
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+
+public class CPHInline
+{
+    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.js";
+    private const string LEADERBOARD_FILE = @"C:\GT7-Position-Voting\leaderboard.js";
+    private const int POSITION = 1; // CHANGE THIS FOR EACH ACTION
+
+    public bool Execute()
+    {
+        try
+        {
+            // Check if votes file exists
+            if (!File.Exists(VOTE_FILE))
+            {
+                CPH.SendYouTubeMessage("No votes found for this race!");
+                return false;
+            }
+
+            // Read and parse votes
+            var votes = ParseVotes();
+            if (votes.Count == 0)
+            {
+                CPH.SendYouTubeMessage("No votes found for this race!");
+                return false;
+            }
+
+            // Find winners
+            var winners = votes.Where(v => v.Position == POSITION).ToList();
+
+            if (winners.Count == 0)
+            {
+                CPH.SendYouTubeMessage($"No one guessed P{POSITION}! Better luck next time!");
+                return true;
+            }
+
+            // Load existing leaderboard
+            var leaderboard = LoadLeaderboard();
+
+            // Award points
+            foreach (var winner in winners)
+            {
+                if (leaderboard.ContainsKey(winner.Username))
+                {
+                    leaderboard[winner.Username].Points++;
+                    leaderboard[winner.Username].LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                }
+                else
+                {
+                    leaderboard[winner.Username] = new Player
+                    {
+                        Username = winner.Username,
+                        Avatar = winner.Avatar,
+                        Points = 1,
+                        LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds()
+                    };
+                }
+            }
+
+            // Save leaderboard
+            SaveLeaderboard(leaderboard);
+
+            // Announce winners
+            var winnerNames = string.Join(", ", winners.Select(w => w.Username));
+            var pointWord = winners.Count == 1 ? "point" : "points";
+            CPH.SendYouTubeMessage($"🏆 Correct predictions for P{POSITION}: {winnerNames} (+1 {pointWord}!)");
+
+            CPH.LogInfo($"Awarded points to {winners.Count} winner(s) for P{POSITION}");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error: {ex.Message}");
+        }
+
+        return true;
+    }
+
+    private List<Vote> ParseVotes()
+    {
+        var votes = new List<Vote>();
+        var voterMap = new Dictionary<string, Vote>();
+
+        try
+        {
+            string content = File.ReadAllText(VOTE_FILE);
+            string[] lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string line in lines)
+            {
+                if (!line.Contains("username:")) continue;
+
+                string username = ExtractValue(line, "username: '", "'");
+                string posStr = ExtractValue(line, "position: ", ",");
+                string avatar = ExtractValue(line, "avatar: '", "'");
+
+                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(posStr)) continue;
+
+                int position;
+                if (!int.TryParse(posStr, out position)) continue;
+
+                voterMap[username] = new Vote
+                {
+                    Username = username,
+                    Position = position,
+                    Avatar = avatar
+                };
+            }
+
+            votes = voterMap.Values.ToList();
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error parsing votes: {ex.Message}");
+        }
+
+        return votes;
+    }
+
+    private Dictionary<string, Player> LoadLeaderboard()
+    {
+        var leaderboard = new Dictionary<string, Player>();
+
+        try
+        {
+            if (!File.Exists(LEADERBOARD_FILE)) return leaderboard;
+
+            string content = File.ReadAllText(LEADERBOARD_FILE);
+            string[] lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string line in lines)
+            {
+                if (!line.Contains("username:")) continue;
+
+                string username = ExtractValue(line, "username: '", "'");
+                string avatar = ExtractValue(line, "avatar: '", "'");
+                string pointsStr = ExtractValue(line, "points: ", ",");
+                string lastUpdatedStr = ExtractValue(line, "lastUpdated: ", "}");
+
+                if (string.IsNullOrEmpty(username)) continue;
+
+                int points = 0;
+                int.TryParse(pointsStr, out points);
+
+                long lastUpdated = 0;
+                long.TryParse(lastUpdatedStr, out lastUpdated);
+
+                leaderboard[username] = new Player
+                {
+                    Username = username,
+                    Avatar = avatar,
+                    Points = points,
+                    LastUpdated = lastUpdated
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error loading leaderboard: {ex.Message}");
+        }
+
+        return leaderboard;
+    }
+
+    private string ExtractValue(string text, string startMarker, string endMarker)
+    {
+        try
+        {
+            int startIdx = text.IndexOf(startMarker);
+            if (startIdx < 0) return "";
+
+            startIdx += startMarker.Length;
+            int endIdx = text.IndexOf(endMarker, startIdx);
+            if (endIdx < 0) return "";
+
+            return text.Substring(startIdx, endIdx - startIdx).Trim();
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    private void SaveLeaderboard(Dictionary<string, Player> leaderboard)
+    {
+        try
+        {
+            string dir = Path.GetDirectoryName(LEADERBOARD_FILE);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+            var lines = new List<string>();
+            lines.Add("window.GT7Leaderboard = [");
+
+            var players = leaderboard.Values.OrderByDescending(p => p.Points).ToList();
+            for (int i = 0; i < players.Count; i++)
+            {
+                var p = players[i];
+                var comma = i < players.Count - 1 ? "," : "";
+                lines.Add($"  {{username: '{EscapeJs(p.Username)}', avatar: '{EscapeJs(p.Avatar)}', points: {p.Points}, lastUpdated: {p.LastUpdated}}}{comma}");
+            }
+
+            lines.Add("];");
+            File.WriteAllText(LEADERBOARD_FILE, string.Join(Environment.NewLine, lines));
+            CPH.LogInfo($"Leaderboard saved with {players.Count} players");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error saving leaderboard: {ex.Message}");
+        }
+    }
+
+    private string EscapeJs(string text)
+    {
+        if (text == null) return "";
+        return text.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
+    }
+
+    private class Vote
+    {
+        public string Username { get; set; }
+        public int Position { get; set; }
+        public string Avatar { get; set; }
+    }
+
+    private class Player
+    {
+        public string Username { get; set; }
+        public string Avatar { get; set; }
+        public int Points { get; set; }
+        public long LastUpdated { get; set; }
+    }
+}
+```
+
+## Step 2: Duplicate for All 16 Positions
+
+Now duplicate this action 15 times and change the position number:
 
 1. Right-click on "GT7 Result P1" → **Duplicate**
 2. Rename to "GT7 Result P2"
-3. Double-click the Sub-Action
-4. Change message to: `!result 2`
-5. Click **OK** and **Save**
+3. Double-click the **Execute C# Code** sub-action
+4. Find the line: `private const int POSITION = 1;`
+5. Change to: `private const int POSITION = 2;`
+6. Click **Compile** to verify
+7. Click **OK** and **Save**
 
-Repeat for positions 3-16.
+Repeat for positions 3-16, changing only the POSITION constant each time.
 
 ### All 16 Actions Quick Reference:
 
-| Action Name | Message to Send |
+| Action Name | POSITION Value |
 |-------------|----------------|
-| GT7 Result P1 | `!result 1` |
-| GT7 Result P2 | `!result 2` |
-| GT7 Result P3 | `!result 3` |
-| GT7 Result P4 | `!result 4` |
-| GT7 Result P5 | `!result 5` |
-| GT7 Result P6 | `!result 6` |
-| GT7 Result P7 | `!result 7` |
-| GT7 Result P8 | `!result 8` |
-| GT7 Result P9 | `!result 9` |
-| GT7 Result P10 | `!result 10` |
-| GT7 Result P11 | `!result 11` |
-| GT7 Result P12 | `!result 12` |
-| GT7 Result P13 | `!result 13` |
-| GT7 Result P14 | `!result 14` |
-| GT7 Result P15 | `!result 15` |
-| GT7 Result P16 | `!result 16` |
+| GT7 Result P1 | `private const int POSITION = 1;` |
+| GT7 Result P2 | `private const int POSITION = 2;` |
+| GT7 Result P3 | `private const int POSITION = 3;` |
+| GT7 Result P4 | `private const int POSITION = 4;` |
+| GT7 Result P5 | `private const int POSITION = 5;` |
+| GT7 Result P6 | `private const int POSITION = 6;` |
+| GT7 Result P7 | `private const int POSITION = 7;` |
+| GT7 Result P8 | `private const int POSITION = 8;` |
+| GT7 Result P9 | `private const int POSITION = 9;` |
+| GT7 Result P10 | `private const int POSITION = 10;` |
+| GT7 Result P11 | `private const int POSITION = 11;` |
+| GT7 Result P12 | `private const int POSITION = 12;` |
+| GT7 Result P13 | `private const int POSITION = 13;` |
+| GT7 Result P14 | `private const int POSITION = 14;` |
+| GT7 Result P15 | `private const int POSITION = 15;` |
+| GT7 Result P16 | `private const int POSITION = 16;` |
 
-## Step 2: Add Actions to Stream Deck
+## Step 3: Add Actions to Stream Deck
 
 1. **Open Stream Deck** software
 2. Drag the **Streamerbot** action from the right panel to a button slot
 3. In the settings for that button:
-   - **Action**: Select "GT7 Result P1"
-   - **Icon**: You can customize (type "1" or use an image)
+   - **Select Action**: Choose "GT7 Result P1"
+   - **Icon**: Customize as desired (use text "1" or an image)
    - **Title**: "P1"
 4. Repeat for all 16 positions
 
@@ -77,7 +319,7 @@ Repeat for positions 3-16.
 [P13] [P14] [P15] [P16]
 ```
 
-## Step 3: Customize Button Appearance (Optional)
+## Step 4: Customize Button Appearance (Optional)
 
 ### Add Colors:
 - **P1-P3**: Gold/Yellow background (podium positions)
@@ -111,13 +353,21 @@ Test each button by:
 
 ### Button does nothing:
 - Check Streamerbot is running
-- Verify action names match exactly
-- Make sure Streamerbot is connected to YouTube
+- Verify the action is enabled in Streamerbot
+- Check Streamerbot console for errors
+- Make sure votes.js file exists
 
 ### Wrong position announced:
-- Double-check the message in each action
-- Make sure you didn't accidentally duplicate with same number
+- Double-check the `POSITION` constant in each action's C# code
+- Make sure you changed it when duplicating (easy to miss!)
+- Verify with Compile before saving
 
 ### Not announcing in chat:
-- Verify you have the `!result` action set up (from STREAMERBOT_FILE_SETUP.md)
-- Check Streamerbot console for errors
+- Check Streamerbot is connected to YouTube
+- Look for errors in Streamerbot logs
+- Verify votes.js file has content
+
+### Compilation errors:
+- Make sure you copied the complete code
+- Check for missing braces or semicolons
+- Try the code from STREAMDECK_SETUP.md again
