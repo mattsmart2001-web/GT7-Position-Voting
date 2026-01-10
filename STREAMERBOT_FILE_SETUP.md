@@ -269,7 +269,6 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 
 public class CPHInline
 {
@@ -369,15 +368,20 @@ public class CPHInline
         try
         {
             string content = File.ReadAllText(VOTE_FILE);
+            string[] lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 
-            // Extract each vote object
-            var matches = Regex.Matches(content, @"username:\s*'([^']+)',\s*position:\s*(\d+),\s*avatar:\s*'([^']+)'");
-
-            foreach (Match match in matches)
+            foreach (string line in lines)
             {
-                string username = match.Groups[1].Value;
-                int position = int.Parse(match.Groups[2].Value);
-                string avatar = match.Groups[3].Value;
+                if (!line.Contains("username:")) continue;
+
+                string username = ExtractValue(line, "username: '", "'");
+                string posStr = ExtractValue(line, "position: ", ",");
+                string avatar = ExtractValue(line, "avatar: '", "'");
+
+                if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(posStr)) continue;
+
+                int position;
+                if (!int.TryParse(posStr, out position)) continue;
 
                 // Only keep last vote per user
                 voterMap[username] = new Vote
@@ -410,15 +414,24 @@ public class CPHInline
             }
 
             string content = File.ReadAllText(LEADERBOARD_FILE);
+            string[] lines = content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
 
-            var matches = Regex.Matches(content, @"username:\s*'([^']+)',\s*avatar:\s*'([^']+)',\s*points:\s*(\d+),\s*lastUpdated:\s*(\d+)");
-
-            foreach (Match match in matches)
+            foreach (string line in lines)
             {
-                string username = match.Groups[1].Value;
-                string avatar = match.Groups[2].Value;
-                int points = int.Parse(match.Groups[3].Value);
-                long lastUpdated = long.Parse(match.Groups[4].Value);
+                if (!line.Contains("username:")) continue;
+
+                string username = ExtractValue(line, "username: '", "'");
+                string avatar = ExtractValue(line, "avatar: '", "'");
+                string pointsStr = ExtractValue(line, "points: ", ",");
+                string lastUpdatedStr = ExtractValue(line, "lastUpdated: ", "}");
+
+                if (string.IsNullOrEmpty(username)) continue;
+
+                int points = 0;
+                int.TryParse(pointsStr, out points);
+
+                long lastUpdated = 0;
+                long.TryParse(lastUpdatedStr, out lastUpdated);
 
                 leaderboard[username] = new Player
                 {
@@ -435,6 +448,25 @@ public class CPHInline
         }
 
         return leaderboard;
+    }
+
+    private string ExtractValue(string text, string startMarker, string endMarker)
+    {
+        try
+        {
+            int startIdx = text.IndexOf(startMarker);
+            if (startIdx < 0) return "";
+
+            startIdx += startMarker.Length;
+            int endIdx = text.IndexOf(endMarker, startIdx);
+            if (endIdx < 0) return "";
+
+            return text.Substring(startIdx, endIdx - startIdx).Trim();
+        }
+        catch
+        {
+            return "";
+        }
     }
 
     private void SaveLeaderboard(Dictionary<string, Player> leaderboard)
