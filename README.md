@@ -28,13 +28,24 @@ A live voting system for Gran Turismo 7 races that displays real-time YouTube vi
 3. **Keep this window open** while streaming
 4. The server runs at: `http://localhost:8000`
 
-### Step 2: Add Overlay to OBS
+### Step 2: Add Overlays to OBS
+
+#### Voting Overlay (Main Display)
 
 1. Open **OBS Studio**
 2. Add a **Browser** source to your scene
 3. **URL**: `http://localhost:8000/overlay-obs.html`
 4. **Width**: `1920`
 5. **Height**: `1080`
+6. Click **OK**
+
+#### Leaderboard Overlay (Optional - Shows Top Predictors)
+
+1. Add another **Browser** source
+2. **URL**: `http://localhost:8000/leaderboard-overlay.html`
+3. **Width**: `400`
+4. **Height**: `600`
+5. Position it near your camera or wherever you prefer
 6. Click **OK**
 
 ### Step 3: Set Up Streamerbot
@@ -73,6 +84,14 @@ Create two actions in Streamerbot:
 4. Paste the unlock code from `STREAMERBOT_FILE_SETUP.md`
 5. **Save**
 
+#### Result Action (!result) - Awards Points to Winners
+
+1. Create **Action**: "GT7 Result"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!result` (Moderators only)
+3. Add **Sub-Action**: Core → Execute C# Code
+4. Paste the result code from `STREAMERBOT_FILE_SETUP.md`
+5. **Save**
+
 ## How It Works
 
 1. **Streamerbot** captures `!vote [1-16]` commands from YouTube chat
@@ -90,11 +109,12 @@ Create two actions in Streamerbot:
 - Can change vote by voting again
 
 ### Streamer
-- Type `!lockvotes` to freeze voting (before race starts)
-- Type `!unlockvotes` to allow voting again
+- Type `!lockvotes` to freeze voting (when race starts)
+- Type `!result [position]` to award points after race (e.g., `!result 3` if you finished 3rd)
 - Type `!resetpoll` to clear votes for next race
-- Overlay automatically updates without manual OBS refresh
-- Results display in real-time as viewers vote
+- Type `!unlockvotes` to allow voting again (optional)
+- Overlays automatically update without manual OBS refresh
+- Leaderboard persists across streams
 
 ## Documentation
 
@@ -149,8 +169,9 @@ The overlay is fully customizable! Edit `overlay-obs.html` to:
 |---------|-------------|--------------|
 | `!vote [1-16]` | Everyone | Vote for finishing position |
 | `!lockvotes` | Moderators | Freeze voting (no more changes) |
-| `!unlockvotes` | Moderators | Allow voting again |
+| `!result [position]` | Moderators | Award points to correct guessers (e.g., `!result 3`) |
 | `!resetpoll` | Moderators | Clear all votes for new race |
+| `!unlockvotes` | Moderators | Allow voting again |
 
 ## License
 

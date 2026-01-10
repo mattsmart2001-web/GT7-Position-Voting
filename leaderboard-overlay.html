@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GT7 Leaderboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .leaderboard {
+      width: 350px;
+      background: linear-gradient(135deg, rgba(20, 20, 30, 0.95) 0%, rgba(30, 30, 45, 0.95) 100%);
+      border-radius: 15px;
+      border: 2px solid rgba(255, 215, 0, 0.6);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+      padding: 15px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid rgba(255, 215, 0, 0.4);
+    }
+
+    .header h2 {
+      font-size: 24px;
+      font-weight: bold;
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+      letter-spacing: 1px;
+    }
+
+    .header .subtitle {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 5px;
+    }
+
+    .leaderboard-entries {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .entry {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .entry:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateX(5px);
+    }
+
+    .entry.rank-1 {
+      background: linear-gradient(90deg, rgba(255, 215, 0, 0.2) 0%, rgba(255, 215, 0, 0.05) 100%);
+      border-color: rgba(255, 215, 0, 0.5);
+    }
+
+    .entry.rank-2 {
+      background: linear-gradient(90deg, rgba(192, 192, 192, 0.2) 0%, rgba(192, 192, 192, 0.05) 100%);
+      border-color: rgba(192, 192, 192, 0.5);
+    }
+
+    .entry.rank-3 {
+      background: linear-gradient(90deg, rgba(205, 127, 50, 0.2) 0%, rgba(205, 127, 50, 0.05) 100%);
+      border-color: rgba(205, 127, 50, 0.5);
+    }
+
+    .rank {
+      font-size: 20px;
+      font-weight: bold;
+      width: 35px;
+      text-align: center;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .rank-1 .rank {
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    }
+
+    .rank-2 .rank {
+      color: #C0C0C0;
+      text-shadow: 0 0 10px rgba(192, 192, 192, 0.8);
+    }
+
+    .rank-3 .rank {
+      color: #CD7F32;
+      text-shadow: 0 0 10px rgba(205, 127, 50, 0.8);
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      margin: 0 12px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+    }
+
+    .info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .username {
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.8);
+    }
+
+    .stats {
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .points {
+      font-size: 22px;
+      font-weight: bold;
+      color: #FFD700;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+      margin-left: 10px;
+    }
+
+    .trophy {
+      font-size: 24px;
+      margin-left: 5px;
+    }
+
+    .empty-message {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.5);
+      padding: 30px;
+      font-size: 14px;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .entry {
+      animation: slideIn 0.5s ease-out;
+    }
+  </style>
+</head>
+<body>
+  <div class="leaderboard">
+    <div class="header">
+      <h2>🏆 TOP PREDICTORS</h2>
+      <div class="subtitle">Most Accurate Predictions</div>
+    </div>
+    <div class="leaderboard-entries" id="leaderboardEntries">
+      <div class="empty-message">No predictions yet!</div>
+    </div>
+  </div>
+
+  <script>
+    const LEADERBOARD_FILE = window.location.protocol === 'file:'
+      ? 'C:/GT7-Position-Voting/leaderboard.js'
+      : 'leaderboard.js';
+
+    let lastUpdateTime = 0;
+
+    function loadLeaderboard() {
+      // Remove old script tag
+      const oldScript = document.querySelector('script[data-leaderboard]');
+      if (oldScript) {
+        oldScript.parentNode.removeChild(oldScript);
+      }
+
+      window.GT7Leaderboard = [];
+
+      let fileUrl = LEADERBOARD_FILE;
+      if (window.location.protocol === 'file:' && !fileUrl.startsWith('file://') && !fileUrl.startsWith('http')) {
+        fileUrl = 'file:///' + LEADERBOARD_FILE.replace(/\\/g, '/');
+      }
+
+      const script = document.createElement('script');
+      script.setAttribute('data-leaderboard', 'true');
+      script.type = 'text/javascript';
+      script.src = fileUrl + '?v=' + Date.now();
+
+      script.onload = function() {
+        if (window.GT7Leaderboard && window.GT7Leaderboard.length > 0) {
+          const latestUpdate = Math.max(...window.GT7Leaderboard.map(p => p.lastUpdated || 0));
+          if (latestUpdate !== lastUpdateTime) {
+            lastUpdateTime = latestUpdate;
+            updateDisplay();
+            console.log('Leaderboard updated: ' + window.GT7Leaderboard.length + ' players');
+          }
+        }
+      };
+
+      script.onerror = function() {
+        console.log('No leaderboard data found yet');
+      };
+
+      document.head.appendChild(script);
+    }
+
+    function updateDisplay() {
+      const container = document.getElementById('leaderboardEntries');
+
+      if (!window.GT7Leaderboard || window.GT7Leaderboard.length === 0) {
+        container.innerHTML = '<div class="empty-message">No predictions yet!</div>';
+        return;
+      }
+
+      // Sort by points (descending), then by name
+      const sorted = [...window.GT7Leaderboard].sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        return a.username.localeCompare(b.username);
+      });
+
+      // Show top 10
+      const top10 = sorted.slice(0, 10);
+
+      container.innerHTML = top10.map((player, index) => {
+        const rank = index + 1;
+        let rankClass = '';
+        let trophy = '';
+
+        if (rank === 1) {
+          rankClass = 'rank-1';
+          trophy = '🥇';
+        } else if (rank === 2) {
+          rankClass = 'rank-2';
+          trophy = '🥈';
+        } else if (rank === 3) {
+          rankClass = 'rank-3';
+          trophy = '🥉';
+        }
+
+        const correctGuesses = player.points; // 1 point = 1 correct guess
+        const plural = correctGuesses === 1 ? 'win' : 'wins';
+
+        return `
+          <div class="entry ${rankClass}">
+            <div class="rank">${rank}</div>
+            <img src="${player.avatar}" class="avatar" alt="${player.username}" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(player.username)}&background=random'">
+            <div class="info">
+              <div class="username">${escapeHtml(player.username)}</div>
+              <div class="stats">${correctGuesses} ${plural}</div>
+            </div>
+            <div class="points">${player.points}</div>
+            ${trophy ? `<div class="trophy">${trophy}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Poll for updates every 2 seconds
+    setInterval(loadLeaderboard, 2000);
+    loadLeaderboard();
+  </script>
+</body>
+</html>

@@ -256,11 +256,248 @@ public class CPHInline
 }
 ```
 
+#### Result Command (Award Points to Winners)
+
+After a race ends, use this to award points to everyone who guessed correctly:
+
+1. Create **Action**: "GT7 Result"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!result` (Moderators only)
+3. Add **Sub-Action**: Core → Execute C# Code
+
+```csharp
+using System;
+using System.IO;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
+
+public class CPHInline
+{
+    private const string VOTE_FILE = @"C:\GT7-Position-Voting\votes.js";
+    private const string LEADERBOARD_FILE = @"C:\GT7-Position-Voting\leaderboard.js";
+
+    public bool Execute()
+    {
+        try
+        {
+            string message = args["message"].ToString();
+            string[] parts = message.Split(' ');
+
+            if (parts.Length < 2)
+            {
+                CPH.SendYouTubeMessage("Usage: !result [position] - Example: !result 3");
+                return false;
+            }
+
+            int actualPosition;
+            if (!int.TryParse(parts[1], out actualPosition) || actualPosition < 1 || actualPosition > 16)
+            {
+                CPH.SendYouTubeMessage("Invalid position! Use !result [1-16]");
+                return false;
+            }
+
+            // Check if votes file exists
+            if (!File.Exists(VOTE_FILE))
+            {
+                CPH.SendYouTubeMessage("No votes found for this race!");
+                return false;
+            }
+
+            // Read and parse votes
+            var votes = ParseVotes();
+            if (votes.Count == 0)
+            {
+                CPH.SendYouTubeMessage("No votes found for this race!");
+                return false;
+            }
+
+            // Find winners (people who voted for actual position)
+            var winners = votes.Where(v => v.Position == actualPosition).ToList();
+
+            if (winners.Count == 0)
+            {
+                CPH.SendYouTubeMessage($"No one guessed P{actualPosition}! Better luck next time!");
+                return true;
+            }
+
+            // Load existing leaderboard
+            var leaderboard = LoadLeaderboard();
+
+            // Award points to winners
+            foreach (var winner in winners)
+            {
+                if (leaderboard.ContainsKey(winner.Username))
+                {
+                    leaderboard[winner.Username].Points++;
+                    leaderboard[winner.Username].LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                }
+                else
+                {
+                    leaderboard[winner.Username] = new Player
+                    {
+                        Username = winner.Username,
+                        Avatar = winner.Avatar,
+                        Points = 1,
+                        LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds()
+                    };
+                }
+            }
+
+            // Save updated leaderboard
+            SaveLeaderboard(leaderboard);
+
+            // Announce winners
+            var winnerNames = string.Join(", ", winners.Select(w => w.Username));
+            var pointWord = winners.Count == 1 ? "point" : "points";
+            CPH.SendYouTubeMessage($"🏆 Correct predictions for P{actualPosition}: {winnerNames} (+1 {pointWord}!)");
+
+            CPH.LogInfo($"Awarded points to {winners.Count} winner(s) for P{actualPosition}");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error processing result: {ex.Message}");
+        }
+
+        return true;
+    }
+
+    private List<Vote> ParseVotes()
+    {
+        var votes = new List<Vote>();
+        var voterMap = new Dictionary<string, Vote>();
+
+        try
+        {
+            string content = File.ReadAllText(VOTE_FILE);
+
+            // Extract each vote object
+            var matches = Regex.Matches(content, @"username:\s*'([^']+)',\s*position:\s*(\d+),\s*avatar:\s*'([^']+)'");
+
+            foreach (Match match in matches)
+            {
+                string username = match.Groups[1].Value;
+                int position = int.Parse(match.Groups[2].Value);
+                string avatar = match.Groups[3].Value;
+
+                // Only keep last vote per user
+                voterMap[username] = new Vote
+                {
+                    Username = username,
+                    Position = position,
+                    Avatar = avatar
+                };
+            }
+
+            votes = voterMap.Values.ToList();
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error parsing votes: {ex.Message}");
+        }
+
+        return votes;
+    }
+
+    private Dictionary<string, Player> LoadLeaderboard()
+    {
+        var leaderboard = new Dictionary<string, Player>();
+
+        try
+        {
+            if (!File.Exists(LEADERBOARD_FILE))
+            {
+                return leaderboard;
+            }
+
+            string content = File.ReadAllText(LEADERBOARD_FILE);
+
+            var matches = Regex.Matches(content, @"username:\s*'([^']+)',\s*avatar:\s*'([^']+)',\s*points:\s*(\d+),\s*lastUpdated:\s*(\d+)");
+
+            foreach (Match match in matches)
+            {
+                string username = match.Groups[1].Value;
+                string avatar = match.Groups[2].Value;
+                int points = int.Parse(match.Groups[3].Value);
+                long lastUpdated = long.Parse(match.Groups[4].Value);
+
+                leaderboard[username] = new Player
+                {
+                    Username = username,
+                    Avatar = avatar,
+                    Points = points,
+                    LastUpdated = lastUpdated
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error loading leaderboard: {ex.Message}");
+        }
+
+        return leaderboard;
+    }
+
+    private void SaveLeaderboard(Dictionary<string, Player> leaderboard)
+    {
+        try
+        {
+            string dir = Path.GetDirectoryName(LEADERBOARD_FILE);
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            var lines = new List<string>();
+            lines.Add("window.GT7Leaderboard = [");
+
+            var players = leaderboard.Values.OrderByDescending(p => p.Points).ToList();
+            for (int i = 0; i < players.Count; i++)
+            {
+                var p = players[i];
+                var comma = i < players.Count - 1 ? "," : "";
+                lines.Add($"  {{username: '{EscapeJs(p.Username)}', avatar: '{EscapeJs(p.Avatar)}', points: {p.Points}, lastUpdated: {p.LastUpdated}}}{comma}");
+            }
+
+            lines.Add("];");
+
+            File.WriteAllText(LEADERBOARD_FILE, string.Join(Environment.NewLine, lines));
+            CPH.LogInfo($"Leaderboard saved with {players.Count} players");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error saving leaderboard: {ex.Message}");
+        }
+    }
+
+    private string EscapeJs(string text)
+    {
+        if (text == null) return "";
+        return text.Replace("\\", "\\\\").Replace("'", "\\'").Replace("\n", "\\n").Replace("\r", "\\r");
+    }
+
+    private class Vote
+    {
+        public string Username { get; set; }
+        public int Position { get; set; }
+        public string Avatar { get; set; }
+    }
+
+    private class Player
+    {
+        public string Username { get; set; }
+        public string Avatar { get; set; }
+        public int Points { get; set; }
+        public long LastUpdated { get; set; }
+    }
+}
+```
+
 **Workflow:**
 1. Start race → viewers type `!vote [1-16]`
 2. Race begins → type `!lockvotes` to freeze votes
-3. Race ends → type `!resetpoll` to clear for next race
-4. (Optional) Type `!unlockvotes` to allow voting before locking again
+3. Race ends → type `!result [position]` to award points (e.g., `!result 3` if you finished 3rd)
+4. Type `!resetpoll` to clear votes for next race
+5. (Optional) Type `!unlockvotes` to allow voting before locking again
 
 ## Test It!
 
