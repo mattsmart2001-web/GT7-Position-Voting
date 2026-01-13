@@ -16,3 +16,5 @@ Thumbs.db
 votes.js
 leaderboard.js
 lock.txt
+competition_entries.txt
+competition_lock.txt

@@ -141,6 +141,8 @@ Create two actions in Streamerbot:
 - **OBS Setup Guide**: `OBS_SETUP.md` - Detailed OBS configuration
 - **Streamerbot Setup**: `STREAMERBOT_FILE_SETUP.md` - Complete C# code with debug logging
 - **Clean Code**: `STREAMERBOT_CLEAN_CODE.md` - Production version without debug logs
+- **Stream Deck Setup**: `STREAMDECK_SETUP.md` - 16-button race result entry guide
+- **Competition System**: `COMPETITION_SETUP.md` - !enterme command for running competitions
 
 ## File Structure
 
