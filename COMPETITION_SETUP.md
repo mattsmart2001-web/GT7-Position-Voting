@@ -4,11 +4,11 @@ A simple system for viewers to enter competitions during your stream using the `
 
 ## Features
 
-- ✅ One entry per person
-- ✅ Chat confirmation when entered
-- ✅ Stores entries in a text file
-- ✅ Easy random selection afterwards
-- ✅ Optional reset command to clear entries
+- ✅ One entry per person (tracked by YouTube User ID)
+- ✅ Chat confirmation when entered (shows total entries)
+- ✅ Stores entries in a text file for easy random selection
+- ✅ Entry count command for moderators
+- ✅ Reset command to clear entries between competitions
 
 ## Setup in Streamerbot
 
@@ -41,9 +41,8 @@ using System.Linq;
 
 public class CPHInline
 {
-    // FILE PATHS - Change these if needed
+    // FILE PATH - Change this if needed
     private const string ENTRIES_FILE = @"C:\GT7-Position-Voting\competition_entries.txt";
-    private const string LOCK_FILE = @"C:\GT7-Position-Voting\competition_lock.txt";
 
     public bool Execute()
     {
@@ -52,14 +51,6 @@ public class CPHInline
         string userId = args["userId"].ToString();
 
         CPH.LogInfo($"Competition entry attempt from: {username} ({userId})");
-
-        // Check if entries are locked
-        if (File.Exists(LOCK_FILE))
-        {
-            CPH.SendYouTubeMessage($"@{username} Sorry, entries are currently closed!");
-            CPH.LogInfo("Entries are locked");
-            return false;
-        }
 
         // Read existing entries
         List<string> entries = new List<string>();
@@ -116,113 +107,9 @@ public class CPHInline
 
 ## Optional Commands
 
-### Reset Entries Command (!resetentries)
-
-Clears all competition entries to start fresh.
-
-1. Create new action: **"Competition Reset"**
-2. Add trigger: **YouTube → Chat Message → Command** → `!resetentries`
-3. Set to **Moderators only**
-4. Add **Execute C# Code** sub-action:
-
-```csharp
-using System;
-using System.IO;
-
-public class CPHInline
-{
-    private const string ENTRIES_FILE = @"C:\GT7-Position-Voting\competition_entries.txt";
-
-    public bool Execute()
-    {
-        if (File.Exists(ENTRIES_FILE))
-        {
-            File.Delete(ENTRIES_FILE);
-            CPH.SendYouTubeMessage("🔄 Competition entries have been reset!");
-            CPH.LogInfo("Competition entries file deleted");
-        }
-        else
-        {
-            CPH.SendYouTubeMessage("No entries to reset!");
-            CPH.LogInfo("No entries file found to delete");
-        }
-
-        return true;
-    }
-}
-```
-
-### Lock Entries Command (!lockentries)
-
-Prevents new entries (competition closed).
-
-1. Create new action: **"Competition Lock"**
-2. Add trigger: **YouTube → Chat Message → Command** → `!lockentries`
-3. Set to **Moderators only**
-4. Add **Execute C# Code** sub-action:
-
-```csharp
-using System;
-using System.IO;
-
-public class CPHInline
-{
-    private const string LOCK_FILE = @"C:\GT7-Position-Voting\competition_lock.txt";
-
-    public bool Execute()
-    {
-        if (File.Exists(LOCK_FILE))
-        {
-            CPH.LogInfo("Entries already locked");
-            return false;
-        }
-
-        File.WriteAllText(LOCK_FILE, DateTime.Now.ToString());
-        CPH.SendYouTubeMessage("🔒 Competition entries are now closed!");
-        CPH.LogInfo("Competition entries locked");
-
-        return true;
-    }
-}
-```
-
-### Unlock Entries Command (!unlockentries)
-
-Allows entries again.
-
-1. Create new action: **"Competition Unlock"**
-2. Add trigger: **YouTube → Chat Message → Command** → `!unlockentries`
-3. Set to **Moderators only**
-4. Add **Execute C# Code** sub-action:
-
-```csharp
-using System;
-using System.IO;
-
-public class CPHInline
-{
-    private const string LOCK_FILE = @"C:\GT7-Position-Voting\competition_lock.txt";
-
-    public bool Execute()
-    {
-        if (!File.Exists(LOCK_FILE))
-        {
-            CPH.LogInfo("Entries already unlocked");
-            return false;
-        }
-
-        File.Delete(LOCK_FILE);
-        CPH.SendYouTubeMessage("🔓 Competition entries are now open!");
-        CPH.LogInfo("Competition entries unlocked");
-
-        return true;
-    }
-}
-```
-
 ### Count Entries Command (!entrycount)
 
-Shows how many people have entered.
+Shows how many people have entered (moderators only).
 
 1. Create new action: **"Competition Count"**
 2. Add trigger: **YouTube → Chat Message → Command** → `!entrycount`
@@ -251,6 +138,42 @@ public class CPHInline
 
         CPH.SendYouTubeMessage($"📊 {count} {plural} entered the competition!");
         CPH.LogInfo($"Entry count: {count}");
+
+        return true;
+    }
+}
+```
+
+### Reset Entries Command (!resetentries)
+
+Clears all competition entries to start fresh (moderators only).
+
+1. Create new action: **"Competition Reset"**
+2. Add trigger: **YouTube → Chat Message → Command** → `!resetentries`
+3. Set to **Moderators only**
+4. Add **Execute C# Code** sub-action:
+
+```csharp
+using System;
+using System.IO;
+
+public class CPHInline
+{
+    private const string ENTRIES_FILE = @"C:\GT7-Position-Voting\competition_entries.txt";
+
+    public bool Execute()
+    {
+        if (File.Exists(ENTRIES_FILE))
+        {
+            File.Delete(ENTRIES_FILE);
+            CPH.SendYouTubeMessage("🔄 Competition entries have been reset!");
+            CPH.LogInfo("Competition entries file deleted");
+        }
+        else
+        {
+            CPH.SendYouTubeMessage("No entries to reset!");
+            CPH.LogInfo("No entries file found to delete");
+        }
 
         return true;
     }
@@ -304,12 +227,10 @@ JaneSmith|UC5555555555|1736534569123
 ### Viewers:
 - Type `!enterme` to enter the competition
 - Can only enter once
-- Get confirmation message
+- Get instant confirmation message with total entry count
 
 ### Streamer/Moderators:
-- `!lockentries` - Close entries
-- `!unlockentries` - Open entries again
-- `!entrycount` - Check how many entries
+- `!entrycount` - Check how many people have entered
 - `!resetentries` - Clear all entries for new competition
 
 ---
@@ -341,19 +262,17 @@ JaneSmith|UC5555555555|1736534569123
 | Command | Who Can Use | What It Does |
 |---------|-------------|--------------|
 | `!enterme` | Everyone | Enter the competition (once per person) |
-| `!lockentries` | Moderators | Close entries |
-| `!unlockentries` | Moderators | Open entries |
 | `!entrycount` | Moderators | Show total entries |
-| `!resetentries` | Moderators | Clear all entries |
+| `!resetentries` | Moderators | Clear all entries for new competition |
 
 ---
 
 ## Tips
 
-- **Announce clearly** when competition is open
-- **Lock entries** when you want to stop accepting
-- **Pick winner on stream** for transparency
-- **Reset entries** after each competition
-- **Save backup** of entries file before picking if you want to verify later
+- **Announce clearly** when the competition is open
+- **Tell viewers** when entries close (just stop accepting them)
+- **Pick winner on stream** for transparency and excitement
+- **Reset entries** after each competition using `!resetentries`
+- **Optional**: Save a backup of entries file before picking if you want to verify later
 
 Enjoy running your competitions! 🎉
