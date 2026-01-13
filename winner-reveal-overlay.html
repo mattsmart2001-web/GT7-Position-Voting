@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Winner Reveal Overlay</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: transparent;
+      overflow: hidden;
+      width: 1920px;
+      height: 1080px;
+    }
+
+    .winner-container {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      width: 800px;
+      opacity: 0;
+      transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+
+    .winner-container.show {
+      transform: translate(-50%, -50%) scale(1);
+      opacity: 1;
+    }
+
+    .winner-container.hide {
+      transform: translate(-50%, -50%) scale(0.5);
+      opacity: 0;
+    }
+
+    .winner-box {
+      background: linear-gradient(135deg, rgba(255, 215, 0, 0.95) 0%, rgba(255, 165, 0, 0.95) 100%);
+      border: 5px solid #FFD700;
+      border-radius: 30px;
+      padding: 60px 40px;
+      text-align: center;
+      box-shadow:
+        0 0 60px rgba(255, 215, 0, 0.8),
+        0 0 120px rgba(255, 215, 0, 0.6),
+        inset 0 0 40px rgba(255, 255, 255, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .winner-box::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.1) 10px,
+        rgba(255, 255, 255, 0.1) 20px
+      );
+      animation: shimmer 3s linear infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .trophy-icon {
+      font-size: 100px;
+      animation: bounce 1s ease-in-out infinite;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.3));
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+
+    .winner-title {
+      font-size: 48px;
+      font-weight: 900;
+      color: #1a1a1a;
+      text-transform: uppercase;
+      letter-spacing: 4px;
+      margin-bottom: 30px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      position: relative;
+      z-index: 1;
+    }
+
+    .winner-avatar {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 6px solid #fff;
+      margin: 0 auto 25px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+      animation: pulse 2s ease-in-out infinite;
+      position: relative;
+      z-index: 1;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    .winner-name {
+      font-size: 56px;
+      font-weight: 900;
+      color: #1a1a1a;
+      margin-bottom: 20px;
+      text-shadow:
+        2px 2px 4px rgba(0, 0, 0, 0.3),
+        0 0 30px rgba(255, 255, 255, 0.8);
+      position: relative;
+      z-index: 1;
+      animation: glow 2s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 30px rgba(255, 255, 255, 0.8); }
+      50% { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 50px rgba(255, 255, 255, 1); }
+    }
+
+    .winner-subtitle {
+      font-size: 28px;
+      color: #1a1a1a;
+      font-weight: 600;
+      opacity: 0.9;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Confetti */
+    .confetti {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background: #f00;
+      position: absolute;
+      animation: confetti-fall 3s linear forwards;
+    }
+
+    @keyframes confetti-fall {
+      to {
+        transform: translateY(1080px) rotate(720deg);
+        opacity: 0;
+      }
+    }
+
+    /* Fireworks */
+    .firework {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      animation: explode 1s ease-out forwards;
+    }
+
+    @keyframes explode {
+      0% {
+        transform: translate(0, 0) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(var(--tx), var(--ty)) scale(0);
+        opacity: 0;
+      }
+    }
+
+    .particles {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" id="particles"></div>
+
+  <div class="winner-container" id="winnerContainer">
+    <div class="winner-box">
+      <div class="trophy-icon">🏆</div>
+      <div class="winner-title">WINNER!</div>
+      <img src="" alt="Winner Avatar" class="winner-avatar" id="winnerAvatar">
+      <div class="winner-name" id="winnerName">Username</div>
+      <div class="winner-subtitle">Congratulations!</div>
+    </div>
+  </div>
+
+  <script>
+    const WINNER_FILE = window.location.protocol === 'file:'
+      ? 'C:/GT7-Position-Voting/winner.js'
+      : 'winner.js';
+
+    let lastWinnerTime = 0;
+    let isAnimating = false;
+
+    function loadWinner() {
+      // Don't check if currently animating
+      if (isAnimating) return;
+
+      // Remove old script tag
+      const oldScript = document.querySelector('script[data-winner]');
+      if (oldScript) {
+        oldScript.parentNode.removeChild(oldScript);
+      }
+
+      window.GT7Winner = null;
+
+      let fileUrl = WINNER_FILE;
+      if (window.location.protocol === 'file:' && !fileUrl.startsWith('file://') && !fileUrl.startsWith('http')) {
+        fileUrl = 'file:///' + WINNER_FILE.replace(/\\/g, '/');
+      }
+
+      const script = document.createElement('script');
+      script.setAttribute('data-winner', 'true');
+      script.type = 'text/javascript';
+      script.src = fileUrl + '?v=' + Date.now();
+
+      script.onload = function() {
+        if (window.GT7Winner && window.GT7Winner.timestamp !== lastWinnerTime) {
+          lastWinnerTime = window.GT7Winner.timestamp;
+          showWinner(window.GT7Winner);
+          console.log('Winner revealed: ' + window.GT7Winner.username);
+        }
+      };
+
+      script.onerror = function() {
+        // File doesn't exist yet, that's okay
+      };
+
+      document.head.appendChild(script);
+    }
+
+    function showWinner(winner) {
+      if (isAnimating) return;
+      isAnimating = true;
+
+      const container = document.getElementById('winnerContainer');
+      const avatar = document.getElementById('winnerAvatar');
+      const name = document.getElementById('winnerName');
+
+      // Set winner data
+      avatar.src = winner.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(winner.username)}&background=random`;
+      name.textContent = winner.username;
+
+      // Create confetti
+      createConfetti();
+
+      // Create fireworks
+      setTimeout(() => createFireworks(), 300);
+      setTimeout(() => createFireworks(), 600);
+      setTimeout(() => createFireworks(), 900);
+
+      // Show animation
+      container.classList.add('show');
+
+      // Hide after 8 seconds
+      setTimeout(() => {
+        container.classList.remove('show');
+        container.classList.add('hide');
+
+        // Reset after animation completes
+        setTimeout(() => {
+          container.classList.remove('hide');
+          isAnimating = false;
+          clearParticles();
+        }, 800);
+      }, 8000);
+    }
+
+    function createConfetti() {
+      const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE'];
+      const particles = document.getElementById('particles');
+
+      for (let i = 0; i < 150; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.top = -20 + 'px';
+        confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        particles.appendChild(confetti);
+      }
+    }
+
+    function createFireworks() {
+      const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A'];
+      const particles = document.getElementById('particles');
+
+      // Random position
+      const x = Math.random() * 1920;
+      const y = Math.random() * 400 + 200;
+
+      for (let i = 0; i < 30; i++) {
+        const firework = document.createElement('div');
+        firework.className = 'firework';
+        firework.style.left = x + 'px';
+        firework.style.top = y + 'px';
+        firework.style.background = colors[Math.floor(Math.random() * colors.length)];
+
+        const angle = (Math.PI * 2 * i) / 30;
+        const velocity = Math.random() * 100 + 50;
+        const tx = Math.cos(angle) * velocity;
+        const ty = Math.sin(angle) * velocity;
+
+        firework.style.setProperty('--tx', tx + 'px');
+        firework.style.setProperty('--ty', ty + 'px');
+
+        particles.appendChild(firework);
+
+        setTimeout(() => firework.remove(), 1000);
+      }
+    }
+
+    function clearParticles() {
+      const particles = document.getElementById('particles');
+      particles.innerHTML = '';
+    }
+
+    // Poll for winner every 500ms
+    setInterval(loadWinner, 500);
+    loadWinner();
+  </script>
+</body>
+</html>

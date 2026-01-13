@@ -8,6 +8,8 @@ A simple system for viewers to enter competitions during your stream using the `
 - ✅ Chat confirmation when entered (shows total entries)
 - ✅ Stores entries in a text file for easy random selection
 - ✅ Entry count command for moderators
+- ✅ **Animated winner reveal overlay** with confetti and fireworks 🎉
+- ✅ Random winner picker command
 - ✅ Reset command to clear entries between competitions
 
 ## Setup in Streamerbot
@@ -180,9 +182,148 @@ public class CPHInline
 }
 ```
 
+### Pick Winner Command (!pickwinner) - **WITH ANIMATED OVERLAY!**
+
+Randomly selects and reveals a winner with a dramatic animated overlay on stream!
+
+1. Create new action: **"Competition Pick Winner"**
+2. Add trigger: **YouTube → Chat Message → Command** → `!pickwinner`
+3. Set to **Moderators only**
+4. Add **Execute C# Code** sub-action:
+
+```csharp
+using System;
+using System.IO;
+using System.Linq;
+
+public class CPHInline
+{
+    private const string ENTRIES_FILE = @"C:\GT7-Position-Voting\competition_entries.txt";
+    private const string WINNER_FILE = @"C:\GT7-Position-Voting\winner.js";
+
+    public bool Execute()
+    {
+        // Check if entries file exists
+        if (!File.Exists(ENTRIES_FILE))
+        {
+            CPH.SendYouTubeMessage("📊 No entries yet! Use !enterme to join the competition.");
+            return false;
+        }
+
+        // Read all entries
+        string[] entries = File.ReadAllLines(ENTRIES_FILE);
+
+        if (entries.Length == 0)
+        {
+            CPH.SendYouTubeMessage("📊 No entries yet! Use !enterme to join the competition.");
+            return false;
+        }
+
+        // Pick random winner
+        Random random = new Random();
+        int winnerIndex = random.Next(entries.Length);
+        string winnerLine = entries[winnerIndex];
+
+        // Parse winner data (format: username|userId|timestamp)
+        string[] parts = winnerLine.Split('|');
+        if (parts.Length < 2)
+        {
+            CPH.SendYouTubeMessage("Error reading winner data!");
+            return false;
+        }
+
+        string winnerUsername = parts[0];
+        string winnerUserId = parts[1];
+
+        // Get avatar URL (try to fetch from YouTube)
+        string avatarUrl = $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(winnerUsername)}&background=random";
+
+        // Try to get real YouTube avatar if possible
+        try
+        {
+            // This is a fallback - Streamerbot might have the avatar in user data
+            if (args.ContainsKey("userAvatar"))
+            {
+                avatarUrl = args["userAvatar"].ToString();
+            }
+        }
+        catch
+        {
+            // Use fallback avatar
+        }
+
+        // Save winner data for overlay
+        long timestamp = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        string winnerData = $"window.GT7Winner = {{\n" +
+                          $"  username: '{winnerUsername.Replace("'", "\\'")}',\n" +
+                          $"  userId: '{winnerUserId}',\n" +
+                          $"  avatar: '{avatarUrl}',\n" +
+                          $"  timestamp: {timestamp}\n" +
+                          $"}};";
+
+        try
+        {
+            File.WriteAllText(WINNER_FILE, winnerData);
+            CPH.LogInfo($"Winner saved: {winnerUsername}");
+        }
+        catch (Exception ex)
+        {
+            CPH.LogError($"Error saving winner: {ex.Message}");
+        }
+
+        // Announce winner in chat
+        CPH.SendYouTubeMessage($"🏆 THE WINNER IS @{winnerUsername}! 🎉 Congratulations!");
+        CPH.LogInfo($"Winner picked: {winnerUsername} (out of {entries.Length} entries)");
+
+        return true;
+    }
+}
+```
+
 ---
 
-## How to Pick a Winner
+## Winner Reveal Overlay Setup (OBS)
+
+Add the animated winner reveal to your stream!
+
+### Step 1: Add to OBS
+
+1. Open **OBS Studio**
+2. Add a **Browser** source to your scene
+3. **URL**: `http://localhost:8000/winner-reveal-overlay.html`
+4. **Width**: `1920`
+5. **Height**: `1080`
+6. **FPS**: `60` (for smooth animations)
+7. ✅ Check **Refresh browser when scene becomes active**
+8. Click **OK**
+
+### Step 2: Position the Source
+
+- Place it above all other sources in your scene (so it appears on top)
+- Make sure it covers the full screen for maximum impact
+- The overlay is transparent when no winner is active
+
+### How It Works
+
+1. Type `!pickwinner` in chat (moderators only)
+2. Bot randomly selects a winner
+3. Overlay automatically detects the winner and triggers animation:
+   - **Golden trophy** bounces in
+   - **Winner's name and avatar** appear with glow effects
+   - **Confetti** rains down
+   - **Fireworks** explode across the screen
+   - Animation plays for 8 seconds
+   - Automatically fades out
+
+### Tips
+
+- Position your camera so the winner reveal appears center screen
+- Use during climactic moments for maximum excitement
+- The overlay polls every 500ms so reveals are instant!
+
+---
+
+## How to Pick a Winner (Alternative Methods)
 
 ### Method 1: Online Random Picker
 
@@ -199,9 +340,7 @@ public class CPHInline
 3. Use a random number generator (1-47)
 4. Pick the person at that line number
 
-### Method 3: Streamerbot Random Picker (Advanced)
-
-Want a chat command to pick winners? I can create a `!pickwinner` command that randomly selects from entries!
+**Note**: Using `!pickwinner` command with the animated overlay is recommended for the best viewer experience!
 
 ---
 
@@ -231,6 +370,7 @@ JaneSmith|UC5555555555|1736534569123
 
 ### Streamer/Moderators:
 - `!entrycount` - Check how many people have entered
+- `!pickwinner` - Randomly pick and reveal winner with animated overlay! 🎉
 - `!resetentries` - Clear all entries for new competition
 
 ---
@@ -263,6 +403,7 @@ JaneSmith|UC5555555555|1736534569123
 |---------|-------------|--------------|
 | `!enterme` | Everyone | Enter the competition (once per person) |
 | `!entrycount` | Moderators | Show total entries |
+| `!pickwinner` | Moderators | Randomly pick winner with animated reveal overlay |
 | `!resetentries` | Moderators | Clear all entries for new competition |
 
 ---
