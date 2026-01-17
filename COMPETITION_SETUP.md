@@ -235,8 +235,10 @@ public class CPHInline
         string winnerUsername = parts[0];
         string winnerUserId = parts[1];
 
-        // Get avatar URL (try to fetch from YouTube)
-        string avatarUrl = $"https://ui-avatars.com/api/?name={Uri.EscapeDataString(winnerUsername)}&background=random";
+        // Get avatar URL - use fallback avatar generator
+        // Replace spaces with + for URL encoding
+        string encodedName = winnerUsername.Replace(" ", "+").Replace("'", "");
+        string avatarUrl = $"https://ui-avatars.com/api/?name={encodedName}&background=random";
 
         // Try to get real YouTube avatar if possible
         try
