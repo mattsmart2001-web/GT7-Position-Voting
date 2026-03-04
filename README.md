@@ -114,6 +114,14 @@ Create two actions in Streamerbot:
 4. Paste the result code from `STREAMERBOT_FILE_SETUP.md`
 5. **Save**
 
+#### Rigged Action (!rigged) - Penalty for Complainers 😄
+
+1. Create **Action**: "GT7 Rigged"
+2. Add **Trigger**: YouTube → Chat Message → Command: `!rigged` (Everyone)
+3. Add **Sub-Action**: Core → Execute C# Code
+4. Paste the rigged code from `STREAMERBOT_CLEAN_CODE.md`
+5. **Save**
+
 ## How It Works
 
 1. **Streamerbot** captures `!vote [1-16]` commands from YouTube chat
@@ -129,6 +137,7 @@ Create two actions in Streamerbot:
 - Type `!vote [position]` to predict finish position
 - Example: `!vote 5` predicts 5th place
 - Can change vote by voting again
+- Type `!rigged` to complain... but it'll cost you 1 point 😄
 - Points are awarded based on **how close** the guess was:
 
 | Difference | Points |
@@ -208,6 +217,7 @@ The overlay is fully customizable! Edit `overlay-obs.html` to:
 | Command | Who Can Use | What It Does |
 |---------|-------------|--------------|
 | `!vote [1-16]` | Everyone | Vote for finishing position |
+| `!rigged` | Everyone | Complain it's rigged — lose 1 point 😄 |
 | `!lockvotes` | Moderators | Freeze voting (no more changes) |
 | `!result [position]` | Moderators | Award proximity points after race (e.g., `!result 3`) |
 | `!resetpoll` | Moderators | Clear all votes for new race |
