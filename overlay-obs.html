@@ -214,23 +214,49 @@
       border: 2px solid rgba(255, 255, 255, 0.2);
     }
 
-    .active-indicator {
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+.start-pos-indicator {
       position: absolute;
       top: 30px;
       left: 50px;
       font-size: 28px;
-      color: #0f0;
-      text-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+      color: #fff;
+      text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.9);
       background: rgba(0, 0, 0, 0.7);
       padding: 15px 30px;
       border-radius: 15px;
-      border: 2px solid rgba(0, 255, 0, 0.3);
-      animation: blink 1.5s ease-in-out infinite;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
     }
 
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.6; }
+    .start-pos-indicator .indicator-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .start-pos-indicator .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #0f0;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.8);
+      animation: blink 1.5s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+
+    .start-pos-indicator .start-label {
+      font-size: 20px;
+      color: rgba(255, 215, 0, 0.9);
+      font-weight: bold;
+      letter-spacing: 1px;
     }
 
     .hidden {
@@ -239,6 +265,14 @@
   </style>
 </head>
 <body>
+  <div class="start-pos-indicator" id="statusIndicator">
+    <div class="indicator-row">
+      <div class="dot"></div>
+      <span>VOTING OPEN</span>
+    </div>
+    <div class="start-label" id="startPosLabel" style="display:none;">START: P<span id="startPosValue"></span></div>
+  </div>
+
   <div class="container">
     <div class="chart-container" id="chartContainer">
       <!-- Position bars will be generated here -->
@@ -251,6 +285,10 @@
     const VOTE_FILE_PATH = window.location.protocol === 'file:'
       ? 'C:/GT7-Position-Voting/votes.js'
       : 'votes.js';
+
+    const STARTPOS_FILE_PATH = window.location.protocol === 'file:'
+      ? 'C:/GT7-Position-Voting/startpos.js'
+      : 'startpos.js';
 
     // Initialize vote data
     window.GT7VoteData = window.GT7VoteData || [];
@@ -453,14 +491,55 @@
       }, 500); // Wait for CSS transition to complete
     }
 
+    // Start position polling
+    let startPosScript = null;
+
+    function loadStartPos() {
+      if (startPosScript && startPosScript.parentNode) {
+        startPosScript.parentNode.removeChild(startPosScript);
+        startPosScript = null;
+      }
+
+      window.GT7StartPos = null;
+
+      let fileUrl = STARTPOS_FILE_PATH;
+      if (window.location.protocol === 'file:' && !fileUrl.startsWith('file://') && !fileUrl.startsWith('http')) {
+        fileUrl = 'file:///' + STARTPOS_FILE_PATH.replace(/\\/g, '/');
+      }
+
+      startPosScript = document.createElement('script');
+      startPosScript.type = 'text/javascript';
+      startPosScript.src = fileUrl + '?v=' + Date.now();
+
+      startPosScript.onload = function() {
+        const label = document.getElementById('startPosLabel');
+        const value = document.getElementById('startPosValue');
+        if (window.GT7StartPos) {
+          value.textContent = window.GT7StartPos;
+          label.style.display = 'block';
+        } else {
+          label.style.display = 'none';
+        }
+      };
+
+      startPosScript.onerror = function() {
+        const label = document.getElementById('startPosLabel');
+        if (label) label.style.display = 'none';
+      };
+
+      document.head.appendChild(startPosScript);
+    }
+
     // Initialize chart on page load
     initializeChart();
 
     // Poll for changes every 1000ms (slower for OBS compatibility)
     setInterval(loadVotes, 1000);
+    setInterval(loadStartPos, 2000);
 
     // Initial load after a brief delay
     setTimeout(loadVotes, 500);
+    setTimeout(loadStartPos, 600);
   </script>
 </body>
 </html>

@@ -5,13 +5,15 @@ A live voting system for Gran Turismo 7 races that displays real-time YouTube vi
 ## Features
 
 - 🏁 Live voting for positions 1-16
+- 🚦 Starting position display — set your grid slot before the race so viewers have context
+- 🎯 Proximity-based scoring — closer guesses earn more points (exact = 5, ±1 = 3, ±2 = 1)
 - 👥 YouTube profile picture display for voters
 - 📊 Animated bar chart visualization with gold highlights
 - 🎮 Streamerbot integration for YouTube chat
 - 🎥 OBS browser source ready
 - ⚡ Updates every second
 - 🔄 Auto-reset when poll is cleared
-- 🎯 One vote per user (can change vote)
+- 🔁 One vote per user (can change vote)
 
 ## Quick Setup (5 minutes!)
 
@@ -127,10 +129,19 @@ Create two actions in Streamerbot:
 - Type `!vote [position]` to predict finish position
 - Example: `!vote 5` predicts 5th place
 - Can change vote by voting again
+- Points are awarded based on **how close** the guess was:
+
+| Difference | Points |
+|---|---|
+| Exact match | **5 pts** |
+| Off by 1 | **3 pts** |
+| Off by 2 | **1 pt** |
+| Off by 3+ | 0 pts |
 
 ### Streamer
+- Press a **Start Position button** on Stream Deck before the race (see `STREAMDECK_STARTPOS_SETUP.md`)
 - Type `!lockvotes` to freeze voting (when race starts)
-- Type `!result [position]` to award points after race (e.g., `!result 3` if you finished 3rd)
+- Press the matching **Result button** on Stream Deck after the race (see `STREAMDECK_SETUP.md`)
 - Type `!resetpoll` to clear votes for next race
 - Type `!unlockvotes` to allow voting again (optional)
 - Overlays automatically update without manual OBS refresh
@@ -141,23 +152,26 @@ Create two actions in Streamerbot:
 - **OBS Setup Guide**: `OBS_SETUP.md` - Detailed OBS configuration
 - **Streamerbot Setup**: `STREAMERBOT_FILE_SETUP.md` - Complete C# code with debug logging
 - **Clean Code**: `STREAMERBOT_CLEAN_CODE.md` - Production version without debug logs
-- **Stream Deck Setup**: `STREAMDECK_SETUP.md` - 16-button race result entry guide
+- **Stream Deck Starting Position**: `STREAMDECK_STARTPOS_SETUP.md` - 16-button start position entry guide
+- **Stream Deck Results**: `STREAMDECK_SETUP.md` - 16-button race result entry guide
 - **Competition System**: `COMPETITION_SETUP.md` - !enterme command for running competitions
 
 ## File Structure
 
 ```
 GT7-Position-Voting/
-├── overlay-obs.html           # Main voting overlay (for OBS)
-├── leaderboard-overlay.html   # Top 10 leaderboard (for OBS)
-├── leaderboard-full.html      # Complete leaderboard (for website)
-├── START_SERVER.bat           # Python HTTP server launcher
-├── OBS_SETUP.md               # OBS setup instructions
-├── STREAMDECK_SETUP.md        # Stream Deck 16-button setup guide
-├── STREAMERBOT_FILE_SETUP.md  # Streamerbot C# code (debug version)
-├── STREAMERBOT_CLEAN_CODE.md  # Streamerbot C# code (production)
-├── votes.js                   # Vote data (created by Streamerbot)
-└── leaderboard.js             # Persistent leaderboard data
+├── overlay-obs.html                # Main voting overlay (for OBS)
+├── leaderboard-overlay.html        # Top 10 leaderboard (for OBS)
+├── leaderboard-full.html           # Complete leaderboard (for website)
+├── START_SERVER.bat                # Python HTTP server launcher
+├── OBS_SETUP.md                    # OBS setup instructions
+├── STREAMDECK_STARTPOS_SETUP.md    # Stream Deck 16-button start position guide
+├── STREAMDECK_SETUP.md             # Stream Deck 16-button race result guide
+├── STREAMERBOT_FILE_SETUP.md       # Streamerbot C# code (debug version)
+├── STREAMERBOT_CLEAN_CODE.md       # Streamerbot C# code (production)
+├── votes.js                        # Vote data (created by Streamerbot)
+├── startpos.js                     # Starting position (created by Stream Deck button)
+└── leaderboard.js                  # Persistent leaderboard data
 ```
 
 ## Troubleshooting
@@ -195,9 +209,13 @@ The overlay is fully customizable! Edit `overlay-obs.html` to:
 |---------|-------------|--------------|
 | `!vote [1-16]` | Everyone | Vote for finishing position |
 | `!lockvotes` | Moderators | Freeze voting (no more changes) |
-| `!result [position]` | Moderators | Award points to correct guessers (e.g., `!result 3`) |
+| `!result [position]` | Moderators | Award proximity points after race (e.g., `!result 3`) |
 | `!resetpoll` | Moderators | Clear all votes for new race |
 | `!unlockvotes` | Moderators | Allow voting again |
+
+**Stream Deck buttons** (no chat commands needed):
+- **Start Position P1–P16**: Set grid position before race → announces in chat + shows on overlay
+- **Result P1–P16**: Award points after race → announces point tiers in chat
 
 ## License
 

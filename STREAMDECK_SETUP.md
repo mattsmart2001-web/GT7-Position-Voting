@@ -40,6 +40,15 @@ public class CPHInline
     private const string LEADERBOARD_FILE = @"C:\GT7-Position-Voting\leaderboard.js";
     private const int POSITION = 1; // CHANGE THIS FOR EACH ACTION
 
+    // Points awarded based on how close the vote was to the actual finish position
+    private int GetPoints(int diff)
+    {
+        if (diff == 0) return 5;
+        if (diff == 1) return 3;
+        if (diff == 2) return 1;
+        return 0;
+    }
+
     public bool Execute()
     {
         try
@@ -59,12 +68,15 @@ public class CPHInline
                 return false;
             }
 
-            // Find winners
-            var winners = votes.Where(v => v.Position == POSITION).ToList();
+            // Calculate points for each voter based on proximity to actual finish
+            var awarded = votes
+                .Select(v => new { v.Username, v.Avatar, Diff = Math.Abs(v.Position - POSITION), Points = GetPoints(Math.Abs(v.Position - POSITION)) })
+                .Where(v => v.Points > 0)
+                .ToList();
 
-            if (winners.Count == 0)
+            if (awarded.Count == 0)
             {
-                CPH.SendYouTubeMessage($"No one guessed P{POSITION}! Better luck next time!");
+                CPH.SendYouTubeMessage($"No one came close to P{POSITION}! Better luck next time!");
                 return true;
             }
 
@@ -72,20 +84,20 @@ public class CPHInline
             var leaderboard = LoadLeaderboard();
 
             // Award points
-            foreach (var winner in winners)
+            foreach (var a in awarded)
             {
-                if (leaderboard.ContainsKey(winner.Username))
+                if (leaderboard.ContainsKey(a.Username))
                 {
-                    leaderboard[winner.Username].Points++;
-                    leaderboard[winner.Username].LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+                    leaderboard[a.Username].Points += a.Points;
+                    leaderboard[a.Username].LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds();
                 }
                 else
                 {
-                    leaderboard[winner.Username] = new Player
+                    leaderboard[a.Username] = new Player
                     {
-                        Username = winner.Username,
-                        Avatar = winner.Avatar,
-                        Points = 1,
+                        Username = a.Username,
+                        Avatar = a.Avatar,
+                        Points = a.Points,
                         LastUpdated = DateTimeOffset.Now.ToUnixTimeMilliseconds()
                     };
                 }
@@ -94,12 +106,19 @@ public class CPHInline
             // Save leaderboard
             SaveLeaderboard(leaderboard);
 
-            // Announce winners
-            var winnerNames = string.Join(", ", winners.Select(w => w.Username));
-            var pointWord = winners.Count == 1 ? "point" : "points";
-            CPH.SendYouTubeMessage($"🏆 Correct predictions for P{POSITION}: {winnerNames} (+1 {pointWord}!)");
+            // Announce results by tier
+            var exact = awarded.Where(a => a.Diff == 0).Select(a => a.Username).ToList();
+            var closeOne = awarded.Where(a => a.Diff == 1).Select(a => a.Username).ToList();
+            var closeTwo = awarded.Where(a => a.Diff == 2).Select(a => a.Username).ToList();
 
-            CPH.LogInfo($"Awarded points to {winners.Count} winner(s) for P{POSITION}");
+            if (exact.Count > 0)
+                CPH.SendYouTubeMessage($"🏆 Perfect guess P{POSITION}: {string.Join(", ", exact)} (+5 pts!)");
+            if (closeOne.Count > 0)
+                CPH.SendYouTubeMessage($"🎯 So close (±1): {string.Join(", ", closeOne)} (+3 pts!)");
+            if (closeTwo.Count > 0)
+                CPH.SendYouTubeMessage($"👍 Near miss (±2): {string.Join(", ", closeTwo)} (+1 pt!)");
+
+            CPH.LogInfo($"Awarded points to {awarded.Count} voter(s) for P{POSITION} result");
         }
         catch (Exception ex)
         {
